@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 use Cache\Adapter\PHPArray\ArrayCachePool;
 use Doctrine\Common\Annotations\AnnotationReader;
@@ -12,14 +14,14 @@ $config->setProxyDir(__DIR__);
 $config->setProxyNamespace('App\GeneratedProxy');
 $config->setMetadataCache(new ArrayCachePool());
 $config->setMetadataDriverImpl(new AnnotationDriver(
-	new AnnotationReader(),
-	[__DIR__ . '/data'],
+    new AnnotationReader(),
+    [__DIR__ . '/data'],
 ));
 
 return new EntityManager(
-	DriverManager::getConnection([
-		'driver' => 'pdo_pgsql',
-		'memory' => true,
-	]),
-	$config,
+    DriverManager::getConnection([
+        'driver' => 'pdo_pgsql',
+        'memory' => true,
+    ]),
+    $config,
 );

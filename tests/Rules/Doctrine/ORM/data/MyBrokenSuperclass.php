@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Rules\Doctrine\ORM;
 
@@ -9,11 +11,10 @@ use Doctrine\ORM\Mapping as ORM;
  */
 abstract class MyBrokenSuperclass
 {
-
-	/**
-	 * @ORM\Column(type="binary")
-	 * @var int
-	 */
-	private $five;
+    /**
+     * @ORM\Column(type="binary")
+     * @var int
+     */
+    private $five;
 
 }

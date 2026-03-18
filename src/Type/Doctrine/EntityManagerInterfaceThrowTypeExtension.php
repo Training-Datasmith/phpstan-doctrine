@@ -1,6 +1,10 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Type\Doctrine;
+
+use function array_map;
 
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
@@ -13,35 +17,33 @@ use PHPStan\Type\DynamicMethodThrowTypeExtension;
 use PHPStan\Type\ObjectType;
 use PHPStan\Type\Type;
 use PHPStan\Type\TypeCombinator;
-use function array_map;
 
 class EntityManagerInterfaceThrowTypeExtension implements DynamicMethodThrowTypeExtension
 {
+    public const SUPPORTED_METHOD = [
+        'flush' => [
+            ORMException::class,
+            UniqueConstraintViolationException::class,
+        ],
+    ];
 
-	public const SUPPORTED_METHOD = [
-		'flush' => [
-			ORMException::class,
-			UniqueConstraintViolationException::class,
-		],
-	];
+    public function isMethodSupported(MethodReflection $methodReflection): bool
+    {
+        return $methodReflection->getDeclaringClass()->getName() === ObjectManager::class
+            && isset(self::SUPPORTED_METHOD[$methodReflection->getName()]);
+    }
 
-	public function isMethodSupported(MethodReflection $methodReflection): bool
-	{
-		return $methodReflection->getDeclaringClass()->getName() === ObjectManager::class
-			&& isset(self::SUPPORTED_METHOD[$methodReflection->getName()]);
-	}
+    public function getThrowTypeFromMethodCall(MethodReflection $methodReflection, MethodCall $methodCall, Scope $scope): ?Type
+    {
+        $type = $scope->getType($methodCall->var);
 
-	public function getThrowTypeFromMethodCall(MethodReflection $methodReflection, MethodCall $methodCall, Scope $scope): ?Type
-	{
-		$type = $scope->getType($methodCall->var);
+        if ((new ObjectType(EntityManagerInterface::class))->isSuperTypeOf($type)->yes()) {
+            return TypeCombinator::union(
+                ...array_map(static fn (string $class): Type => new ObjectType($class), self::SUPPORTED_METHOD[$methodReflection->getName()]),
+            );
+        }
 
-		if ((new ObjectType(EntityManagerInterface::class))->isSuperTypeOf($type)->yes()) {
-			return TypeCombinator::union(
-				...array_map(static fn (string $class): Type => new ObjectType($class), self::SUPPORTED_METHOD[$methodReflection->getName()]),
-			);
-		}
-
-		return $methodReflection->getThrowType();
-	}
+        return $methodReflection->getThrowType();
+    }
 
 }

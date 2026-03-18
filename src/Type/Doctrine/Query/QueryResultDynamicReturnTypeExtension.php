@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Type\Doctrine\Query;
 
@@ -16,76 +18,73 @@ use PHPStan\Type\Type;
 
 final class QueryResultDynamicReturnTypeExtension implements DynamicMethodReturnTypeExtension
 {
+    private const METHOD_HYDRATION_MODE_ARG = [
+        'getResult' => 0,
+        'toIterable' => 1,
+        'execute' => 1,
+        'executeIgnoreQueryCache' => 1,
+        'executeUsingQueryCache' => 1,
+        'getOneOrNullResult' => 0,
+        'getSingleResult' => 0,
+    ];
 
-	private const METHOD_HYDRATION_MODE_ARG = [
-		'getResult' => 0,
-		'toIterable' => 1,
-		'execute' => 1,
-		'executeIgnoreQueryCache' => 1,
-		'executeUsingQueryCache' => 1,
-		'getOneOrNullResult' => 0,
-		'getSingleResult' => 0,
-	];
+    private ObjectMetadataResolver $objectMetadataResolver;
 
-	private ObjectMetadataResolver $objectMetadataResolver;
+    private HydrationModeReturnTypeResolver $hydrationModeReturnTypeResolver;
 
-	private HydrationModeReturnTypeResolver $hydrationModeReturnTypeResolver;
+    public function __construct(
+        ObjectMetadataResolver $objectMetadataResolver,
+        HydrationModeReturnTypeResolver $hydrationModeReturnTypeResolver
+    ) {
+        $this->objectMetadataResolver = $objectMetadataResolver;
+        $this->hydrationModeReturnTypeResolver = $hydrationModeReturnTypeResolver;
+    }
 
-	public function __construct(
-		ObjectMetadataResolver $objectMetadataResolver,
-		HydrationModeReturnTypeResolver $hydrationModeReturnTypeResolver
-	)
-	{
-		$this->objectMetadataResolver = $objectMetadataResolver;
-		$this->hydrationModeReturnTypeResolver = $hydrationModeReturnTypeResolver;
-	}
+    public function getClass(): string
+    {
+        return AbstractQuery::class;
+    }
 
-	public function getClass(): string
-	{
-		return AbstractQuery::class;
-	}
+    public function isMethodSupported(MethodReflection $methodReflection): bool
+    {
+        return isset(self::METHOD_HYDRATION_MODE_ARG[$methodReflection->getName()]);
+    }
 
-	public function isMethodSupported(MethodReflection $methodReflection): bool
-	{
-		return isset(self::METHOD_HYDRATION_MODE_ARG[$methodReflection->getName()]);
-	}
+    public function getTypeFromMethodCall(
+        MethodReflection $methodReflection,
+        MethodCall $methodCall,
+        Scope $scope
+    ): ?Type {
+        $methodName = $methodReflection->getName();
 
-	public function getTypeFromMethodCall(
-		MethodReflection $methodReflection,
-		MethodCall $methodCall,
-		Scope $scope
-	): ?Type
-	{
-		$methodName = $methodReflection->getName();
+        if (!isset(self::METHOD_HYDRATION_MODE_ARG[$methodName])) {
+            throw new ShouldNotHappenException();
+        }
 
-		if (!isset(self::METHOD_HYDRATION_MODE_ARG[$methodName])) {
-			throw new ShouldNotHappenException();
-		}
+        $argIndex = self::METHOD_HYDRATION_MODE_ARG[$methodName];
+        $args = $methodCall->getArgs();
 
-		$argIndex = self::METHOD_HYDRATION_MODE_ARG[$methodName];
-		$args = $methodCall->getArgs();
+        if (isset($args[$argIndex])) {
+            $hydrationMode = $scope->getType($args[$argIndex]->value);
+        } else {
+            $parametersAcceptor = ParametersAcceptorSelector::selectFromArgs(
+                $scope,
+                $methodCall->getArgs(),
+                $methodReflection->getVariants(),
+            );
+            $parameter = $parametersAcceptor->getParameters()[$argIndex];
+            $hydrationMode = $parameter->getDefaultValue() ?? new NullType();
+        }
 
-		if (isset($args[$argIndex])) {
-			$hydrationMode = $scope->getType($args[$argIndex]->value);
-		} else {
-			$parametersAcceptor = ParametersAcceptorSelector::selectFromArgs(
-				$scope,
-				$methodCall->getArgs(),
-				$methodReflection->getVariants(),
-			);
-			$parameter = $parametersAcceptor->getParameters()[$argIndex];
-			$hydrationMode = $parameter->getDefaultValue() ?? new NullType();
-		}
+        $queryType = $scope->getType($methodCall->var);
 
-		$queryType = $scope->getType($methodCall->var);
-
-		return $this->hydrationModeReturnTypeResolver->getMethodReturnTypeForHydrationMode(
-			$methodReflection->getName(),
-			$hydrationMode,
-			$queryType->getTemplateType(AbstractQuery::class, 'TKey'),
-			$queryType->getTemplateType(AbstractQuery::class, 'TResult'),
-			$this->objectMetadataResolver->getObjectManager(),
-		);
-	}
+        return $this->hydrationModeReturnTypeResolver->getMethodReturnTypeForHydrationMode(
+            $methodReflection->getName(),
+            $hydrationMode,
+            $queryType->getTemplateType(AbstractQuery::class, 'TKey'),
+            $queryType->getTemplateType(AbstractQuery::class, 'TResult'),
+            $this->objectMetadataResolver->getObjectManager(),
+        );
+    }
 
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Platform;
 
@@ -13,14 +15,12 @@ use SensitiveParameter;
  */
 class UnknownDriver extends AbstractMySQLDriver
 {
-
-	public function connect(
-		#[SensitiveParameter]
-		array $params
-	): DriverConnection
-	{
-		$pdo = new PDO('mysql:host=localhost;dbname=dummy;charset=utf8mb4');
-		return new PdoDriverConnection($pdo);
-	}
+    public function connect(
+        #[SensitiveParameter]
+        array $params
+    ): DriverConnection {
+        $pdo = new PDO('mysql:host=localhost;dbname=dummy;charset=utf8mb4');
+        return new PdoDriverConnection($pdo);
+    }
 
 }

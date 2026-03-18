@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Platform;
 
@@ -9,12 +11,11 @@ use Doctrine\DBAL\Types\IntegerType;
  */
 class MixedCustomType extends IntegerType
 {
+    public const NAME = 'mixed';
 
-	public const NAME = 'mixed';
-
-	public function getName(): string
-	{
-		return self::NAME;
-	}
+    public function getName(): string
+    {
+        return self::NAME;
+    }
 
 }

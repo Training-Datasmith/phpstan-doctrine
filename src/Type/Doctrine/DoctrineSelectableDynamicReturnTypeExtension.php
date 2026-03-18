@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Type\Doctrine;
 
@@ -10,24 +12,22 @@ use PHPStan\Type\Type;
 
 class DoctrineSelectableDynamicReturnTypeExtension implements DynamicMethodReturnTypeExtension
 {
+    public function getClass(): string
+    {
+        return 'Doctrine\Common\Collections\Collection';
+    }
 
-	public function getClass(): string
-	{
-		return 'Doctrine\Common\Collections\Collection';
-	}
+    public function isMethodSupported(MethodReflection $methodReflection): bool
+    {
+        return $methodReflection->getName() === 'matching';
+    }
 
-	public function isMethodSupported(MethodReflection $methodReflection): bool
-	{
-		return $methodReflection->getName() === 'matching';
-	}
-
-	public function getTypeFromMethodCall(
-		MethodReflection $methodReflection,
-		MethodCall $methodCall,
-		Scope $scope
-	): Type
-	{
-		return $scope->getType($methodCall->var);
-	}
+    public function getTypeFromMethodCall(
+        MethodReflection $methodReflection,
+        MethodCall $methodCall,
+        Scope $scope
+    ): Type {
+        return $scope->getType($methodCall->var);
+    }
 
 }

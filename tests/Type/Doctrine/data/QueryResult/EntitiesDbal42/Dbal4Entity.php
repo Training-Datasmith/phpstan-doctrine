@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace QueryResult\EntitiesDbal42;
 
@@ -12,25 +14,24 @@ use Doctrine\ORM\Mapping\Id;
  */
 class Dbal4Entity
 {
+    /**
+     * @Column(type="integer")
+     * @GeneratedValue(strategy="AUTO")
+     * @Id()
+     *
+     * @var int
+     */
+    public $id;
 
-	/**
-	 * @Column(type="integer")
-	 * @GeneratedValue(strategy="AUTO")
-	 * @Id()
-	 *
-	 * @var int
-	 */
-	public $id;
+    /**
+     * @Column(type="enum", options={"values"={"a", "b", "c"}})
+     * @var string
+     */
+    public $enum;  // dbal 4.2+
 
-	/**
-	 * @Column(type="enum", options={"values"={"a", "b", "c"}})
-	 * @var string
-	 */
-	public $enum;  // dbal 4.2+
-
-	/**
-	 * @Column(type="smallfloat")
-	 * @var float
-	 */
-	public $smallfloat; // dbal 4.1+
+    /**
+     * @Column(type="smallfloat")
+     * @var float
+     */
+    public $smallfloat; // dbal 4.1+
 }

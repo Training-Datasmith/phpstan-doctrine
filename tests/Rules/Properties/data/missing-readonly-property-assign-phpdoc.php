@@ -1,4 +1,7 @@
-<?php // lint >= 7.4
+<?php
+
+declare(strict_types=1);
+// lint >= 7.4
 
 namespace MissingReadOnlyPropertyAssignPhpDoc;
 
@@ -9,32 +12,31 @@ use Doctrine\ORM\Mapping as ORM;
  */
 class EntityWithAGeneratedId
 {
+    /**
+     * @ORM\Id
+     * @ORM\GeneratedValue
+     * @ORM\Column
+     * @readonly
+     */
+    private int $id; // ok, ID is generated
 
-	/**
-	 * @ORM\Id
-	 * @ORM\GeneratedValue
-	 * @ORM\Column
-	 * @readonly
-	 */
-	private int $id; // ok, ID is generated
+    /**
+     * @ORM\Column
+     * @readonly
+     */
+    private int $unassigned;
 
-	/**
-	 * @ORM\Column
-	 * @readonly
-	 */
-	private int $unassigned;
+    /**
+     * @ORM\Column
+     * @readonly
+     */
+    private int $doubleAssigned;
 
-	/**
-	 * @ORM\Column
-	 * @readonly
-	 */
-	private int $doubleAssigned;
-
-	public function __construct(int $doubleAssigned)
-	{
-		$this->doubleAssigned = $doubleAssigned;
-		$this->doubleAssigned = 17;
-	}
+    public function __construct(int $doubleAssigned)
+    {
+        $this->doubleAssigned = $doubleAssigned;
+        $this->doubleAssigned = 17;
+    }
 
 }
 
@@ -43,13 +45,12 @@ class EntityWithAGeneratedId
  */
 class ReadOnlyEntity
 {
-
-	/**
-	 * @ORM\Id
-	 * @ORM\Column
-	 * @readonly
-	 */
-	private int $id; // ok, entity is read only
+    /**
+     * @ORM\Id
+     * @ORM\Column
+     * @readonly
+     */
+    private int $id; // ok, entity is read only
 
 }
 
@@ -58,16 +59,15 @@ class ReadOnlyEntity
  */
 class ReadOnlyEntityWithConstructor
 {
+    /**
+     * @ORM\Id
+     * @ORM\Column
+     * @readonly
+     */
+    private int $id;
 
-	/**
-	 * @ORM\Id
-	 * @ORM\Column
-	 * @readonly
-	 */
-	private int $id;
-
-	public function __construct()
-	{
-	}
+    public function __construct()
+    {
+    }
 
 }

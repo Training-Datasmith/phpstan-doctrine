@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Rules\Exceptions;
 
@@ -10,22 +12,21 @@ use PHPStan\Testing\RuleTestCase;
  */
 class CatchWithUnthrownExceptionRuleTest extends RuleTestCase
 {
+    protected function getRule(): Rule
+    {
+        return self::getContainer()->getByType(CatchWithUnthrownExceptionRule::class);
+    }
 
-	protected function getRule(): Rule
-	{
-		return self::getContainer()->getByType(CatchWithUnthrownExceptionRule::class);
-	}
+    public function testRule(): void
+    {
+        $this->analyse([__DIR__ . '/data/unthrown-exception.php'], []);
+    }
 
-	public function testRule(): void
-	{
-		$this->analyse([__DIR__ . '/data/unthrown-exception.php'], []);
-	}
-
-	public static function getAdditionalConfigFiles(): array
-	{
-		return [
-			__DIR__ . '/../../../extension.neon',
-		];
-	}
+    public static function getAdditionalConfigFiles(): array
+    {
+        return [
+            __DIR__ . '/../../../extension.neon',
+        ];
+    }
 
 }

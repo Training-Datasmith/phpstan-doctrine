@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Rules\Exceptions;
 
@@ -10,22 +12,21 @@ use PHPStan\Testing\RuleTestCase;
  */
 class TooWideMethodThrowTypeRuleTest extends RuleTestCase
 {
+    protected function getRule(): Rule
+    {
+        return self::getContainer()->getByType(TooWideMethodThrowTypeRule::class);
+    }
 
-	protected function getRule(): Rule
-	{
-		return self::getContainer()->getByType(TooWideMethodThrowTypeRule::class);
-	}
+    public function testRule(): void
+    {
+        $this->analyse([__DIR__ . '/data/entity-manager-interface.php'], []);
+    }
 
-	public function testRule(): void
-	{
-		$this->analyse([__DIR__ . '/data/entity-manager-interface.php'], []);
-	}
-
-	public static function getAdditionalConfigFiles(): array
-	{
-		return [
-			__DIR__ . '/../../../extension.neon',
-		];
-	}
+    public static function getAdditionalConfigFiles(): array
+    {
+        return [
+            __DIR__ . '/../../../extension.neon',
+        ];
+    }
 
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\DoctrineIntegration\ORM;
 
@@ -6,30 +8,29 @@ use PHPStan\Testing\LevelsTestCase;
 
 final class EntityRepositoryDynamicReturnIntegrationTest extends LevelsTestCase
 {
+    /**
+     * @return string[][]
+     */
+    public static function dataTopics(): array
+    {
+        return [
+            ['entityRepositoryDynamicReturn'],
+        ];
+    }
 
-	/**
-	 * @return string[][]
-	 */
-	public static function dataTopics(): array
-	{
-		return [
-			['entityRepositoryDynamicReturn'],
-		];
-	}
+    public function getDataPath(): string
+    {
+        return __DIR__ . '/data';
+    }
 
-	public function getDataPath(): string
-	{
-		return __DIR__ . '/data';
-	}
+    public function getPhpStanExecutablePath(): string
+    {
+        return __DIR__ . '/../../../vendor/phpstan/phpstan/phpstan';
+    }
 
-	public function getPhpStanExecutablePath(): string
-	{
-		return __DIR__ . '/../../../vendor/phpstan/phpstan/phpstan';
-	}
-
-	public function getPhpStanConfigPath(): string
-	{
-		return __DIR__ . '/phpstan.neon';
-	}
+    public function getPhpStanConfigPath(): string
+    {
+        return __DIR__ . '/phpstan.neon';
+    }
 
 }

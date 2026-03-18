@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Rules\Doctrine\ORM;
 
@@ -9,12 +11,12 @@ use Doctrine\ORM\Mapping as ORM;
  */
 class MyEntityRelationPrimaryKey
 {
-	/**
-	 * @ORM\Id()
-	 * @ORM\ManyToOne(targetEntity=MyEntity::class)
-	 *
-	 * @var MyEntity
-	 */
-	private $id;
+    /**
+     * @ORM\Id()
+     * @ORM\ManyToOne(targetEntity=MyEntity::class)
+     *
+     * @var MyEntity
+     */
+    private $id;
 
 }

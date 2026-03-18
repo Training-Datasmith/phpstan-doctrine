@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PHPStan\Rules\Doctrine\ORM;
 
 use Doctrine\ORM\Mapping as ORM;
@@ -11,35 +13,35 @@ use Symfony\Component\Uid\Uuid;
  */
 class EntityWithSymfonyUid
 {
-	/**
-	 * @ORM\Id()
-	 * @ORM\GeneratedValue()
-	 * @ORM\Column(type="integer")
-	 * @var int
-	 */
-	private $id;
+    /**
+     * @ORM\Id()
+     * @ORM\GeneratedValue()
+     * @ORM\Column(type="integer")
+     * @var int
+     */
+    private $id;
 
-	/**
-	 * @ORM\Column(type="uuid")
-	 * @var Uuid
-	 */
-	private $uuid;
+    /**
+     * @ORM\Column(type="uuid")
+     * @var Uuid
+     */
+    private $uuid;
 
-	/**
-	 * @ORM\Column(type="uuid")
-	 * @var string
-	 */
-	private $uuidInvalidType;
+    /**
+     * @ORM\Column(type="uuid")
+     * @var string
+     */
+    private $uuidInvalidType;
 
-	/**
-	 * @ORM\Column(type="ulid")
-	 * @var Ulid
-	 */
-	private $ulid;
+    /**
+     * @ORM\Column(type="ulid")
+     * @var Ulid
+     */
+    private $ulid;
 
-	/**
-	 * @ORM\Column(type="ulid")
-	 * @var string
-	 */
-	private $ulidInvalidType;
+    /**
+     * @ORM\Column(type="ulid")
+     * @var string
+     */
+    private $ulidInvalidType;
 }

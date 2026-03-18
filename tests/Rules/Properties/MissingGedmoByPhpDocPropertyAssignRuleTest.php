@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Rules\Properties;
 
@@ -13,29 +15,28 @@ use PHPStan\Type\Doctrine\ObjectMetadataResolver;
  */
 class MissingGedmoByPhpDocPropertyAssignRuleTest extends RuleTestCase
 {
+    protected function getRule(): Rule
+    {
+        return self::getContainer()->getByType(UnusedPrivatePropertyRule::class);
+    }
 
-	protected function getRule(): Rule
-	{
-		return self::getContainer()->getByType(UnusedPrivatePropertyRule::class);
-	}
+    protected function getReadWritePropertiesExtensions(): array
+    {
+        return [
+            new PropertiesExtension(new ObjectMetadataResolver(__DIR__ . '/entity-manager.php', __DIR__ . '/../../../../tmp')),
+        ];
+    }
 
-	protected function getReadWritePropertiesExtensions(): array
-	{
-		return [
-			new PropertiesExtension(new ObjectMetadataResolver(__DIR__ . '/entity-manager.php', __DIR__ . '/../../../../tmp')),
-		];
-	}
+    public static function getAdditionalConfigFiles(): array
+    {
+        return [__DIR__ . '/../../../extension.neon'];
+    }
 
-	public static function getAdditionalConfigFiles(): array
-	{
-		return [__DIR__ . '/../../../extension.neon'];
-	}
-
-	public function testRule(): void
-	{
-		$this->analyse([__DIR__ . '/data/gedmo-property-assign-phpdoc.php'], [
-			// No errors expected
-		]);
-	}
+    public function testRule(): void
+    {
+        $this->analyse([__DIR__ . '/data/gedmo-property-assign-phpdoc.php'], [
+            // No errors expected
+        ]);
+    }
 
 }

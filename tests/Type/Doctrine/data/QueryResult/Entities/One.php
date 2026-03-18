@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace QueryResult\Entities;
 
@@ -16,73 +18,73 @@ use Doctrine\ORM\Mapping\OneToOne;
  */
 class One
 {
-	/**
-	 * @Column(type="bigint")
-	 * @Id
-	 *
-	 * @var string
-	 */
-	public $id;
+    /**
+     * @Column(type="bigint")
+     * @Id
+     *
+     * @var string
+     */
+    public $id;
 
-	/**
-	 * @Column(type="integer")
-	 *
-	 * @var int
-	 */
-	public $intColumn;
+    /**
+     * @Column(type="integer")
+     *
+     * @var int
+     */
+    public $intColumn;
 
-	/**
-	 * @Column(type="float")
-	 *
-	 * @var float
-	 */
-	public $floatColumn;
+    /**
+     * @Column(type="float")
+     *
+     * @var float
+     */
+    public $floatColumn;
 
-	/**
-	 * @Column(type="string")
-	 *
-	 * @var string
-	 */
-	public $stringColumn;
+    /**
+     * @Column(type="string")
+     *
+     * @var string
+     */
+    public $stringColumn;
 
-	/**
-	 * @Column(type="string", nullable=true)
-	 *
-	 * @var string|null
-	 */
-	public $stringNullColumn;
+    /**
+     * @Column(type="string", nullable=true)
+     *
+     * @var string|null
+     */
+    public $stringNullColumn;
 
-	/**
-	 * @OneToOne(targetEntity="QueryResult\Entities\SubOne", cascade={"persist"})
-	 * @JoinColumn(nullable=false)
-	 *
-	 * @var SubOne
-	 */
-	public $subOne;
+    /**
+     * @OneToOne(targetEntity="QueryResult\Entities\SubOne", cascade={"persist"})
+     * @JoinColumn(nullable=false)
+     *
+     * @var SubOne
+     */
+    public $subOne;
 
-	/**
-	 * @OneToMany(targetEntity="QueryResult\Entities\Many", mappedBy="one")
-	 *
-	 * @var Collection<int,Many>
-	 */
-	public $manies;
+    /**
+     * @OneToMany(targetEntity="QueryResult\Entities\Many", mappedBy="one")
+     *
+     * @var Collection<int,Many>
+     */
+    public $manies;
 
-	/**
-	 * @ORMEmbedded(class="QueryResult\Entities\Embedded")
-	 *
-	 * @var Embedded
-	 */
-	public $embedded;
+    /**
+     * @ORMEmbedded(class="QueryResult\Entities\Embedded")
+     *
+     * @var Embedded
+     */
+    public $embedded;
 
-	/**
-	 * @Column(type="custom_int", nullable=true)
-	 *
-	 * @var mixed
-	 */
-	public $mixedColumn;
+    /**
+     * @Column(type="custom_int", nullable=true)
+     *
+     * @var mixed
+     */
+    public $mixedColumn;
 
-	public function __construct()
-	{
-		$this->subOne = new SubOne();
-	}
+    public function __construct()
+    {
+        $this->subOne = new SubOne();
+    }
 }

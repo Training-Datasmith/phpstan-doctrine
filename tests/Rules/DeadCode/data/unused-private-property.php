@@ -1,4 +1,7 @@
-<?php // lint >= 7.4
+<?php
+
+declare(strict_types=1);
+// lint >= 7.4
 
 namespace PHPStan\Rules\Doctrine\ORM\UnusedPrivateProperty;
 
@@ -9,20 +12,19 @@ use Doctrine\ORM\Mapping as ORM;
  */
 class EntityWithAGeneratedId
 {
+    /**
+     * @ORM\Id
+     * @ORM\GeneratedValue
+     * @ORM\Column
+     */
+    private int $id; // ok, ID is generated
 
-	/**
-	 * @ORM\Id
-	 * @ORM\GeneratedValue
-	 * @ORM\Column
-	 */
-	private int $id; // ok, ID is generated
+    /**
+     * @ORM\Column
+     */
+    private int $unused;
 
-	/**
-	 * @ORM\Column
-	 */
-	private int $unused;
-
-	private int $unused2;
+    private int $unused2;
 
 }
 
@@ -31,12 +33,11 @@ class EntityWithAGeneratedId
  */
 class ReadOnlyEntity
 {
-
-	/**
-	 * @ORM\Id
-	 * @ORM\Column
-	 */
-	private int $id; // ok, entity is read only
+    /**
+     * @ORM\Id
+     * @ORM\Column
+     */
+    private int $id; // ok, entity is read only
 
 }
 
@@ -45,16 +46,15 @@ class ReadOnlyEntity
  */
 class ReadOnlyEntityWithConstructor
 {
+    /**
+     * @ORM\Id
+     * @ORM\Column
+     */
+    private int $id;
 
-	/**
-	 * @ORM\Id
-	 * @ORM\Column
-	 */
-	private int $id;
-
-	public function __construct()
-	{
-	}
+    public function __construct()
+    {
+    }
 }
 
 /**
@@ -62,21 +62,21 @@ class ReadOnlyEntityWithConstructor
  */
 class EntityWithGeneratedField
 {
-	/**
-	 * @ORM\Id
-	 * @ORM\Column
-	 */
-	public int $id;
+    /**
+     * @ORM\Id
+     * @ORM\Column
+     */
+    public int $id;
 
-	/**
-	 * @ORM\Column(type="int", insertable=false, updatable=false, generated="ALWAYS",
-	 *     columnDefinition="int GENERATED ALWAYS AS (1 + 2)")
-	 */
-	private int $generated;
+    /**
+     * @ORM\Column(type="int", insertable=false, updatable=false, generated="ALWAYS",
+     *     columnDefinition="int GENERATED ALWAYS AS (1 + 2)")
+     */
+    private int $generated;
 
-	public function __construct()
-	{
-	}
+    public function __construct()
+    {
+    }
 }
 
 /**
@@ -84,28 +84,27 @@ class EntityWithGeneratedField
  */
 class EntityWithGeneratedFieldWithGetter
 {
-	/**
-	 * @ORM\Id
-	 * @ORM\Column
-	 */
-	public int $id;
+    /**
+     * @ORM\Id
+     * @ORM\Column
+     */
+    public int $id;
 
-	/**
-	 * @ORM\Column(type="int", insertable=false, updatable=false, generated="ALWAYS",
-	 *     columnDefinition="int GENERATED ALWAYS AS (1 + 2)")
-	 */
-	private int $generated;
+    /**
+     * @ORM\Column(type="int", insertable=false, updatable=false, generated="ALWAYS",
+     *     columnDefinition="int GENERATED ALWAYS AS (1 + 2)")
+     */
+    private int $generated;
 
-	public function __construct()
-	{
-	}
+    public function __construct()
+    {
+    }
 
-	/**
-	 * @return int
-	 */
-	public function getGenerated(): int
-	{
-		return $this->generated;
-	}
+    /**
+     * @return int
+     */
+    public function getGenerated(): int
+    {
+        return $this->generated;
+    }
 }
-

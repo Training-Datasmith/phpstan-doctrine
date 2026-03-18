@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Platform\Entity;
 
@@ -12,13 +14,12 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity]
 class PlatformRelatedEntity
 {
-
-	/**
-	 * @ORM\Id
-	 * @ORM\Column(type="integer", nullable=false)
-	 */
-	#[ORM\Id]
-	#[ORM\Column(type: 'integer', nullable: false)]
-	public int $id;
+    /**
+     * @ORM\Id
+     * @ORM\Column(type="integer", nullable=false)
+     */
+    #[ORM\Id]
+    #[ORM\Column(type: 'integer', nullable: false)]
+    public int $id;
 
 }

@@ -1,8 +1,11 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\DoctrineIntegration\Persistence\ManagerRegistryRepositoryDynamicReturn;
 
 use Doctrine\Persistence\ManagerRegistry;
+
 use function PHPStan\Testing\assertType;
 
 class Example
@@ -20,8 +23,8 @@ class Example
     public function findDynamicType(): void
     {
         $repo = $this->managerRegistry->getRepository(MyEntity::class);
-		assertType('Doctrine\ORM\EntityRepository<PHPStan\DoctrineIntegration\Persistence\ManagerRegistryRepositoryDynamicReturn\MyEntity>', $repo);
-		assertType('Doctrine\ORM\QueryBuilder', $repo->createQueryBuilder('e'));
+        assertType('Doctrine\ORM\EntityRepository<PHPStan\DoctrineIntegration\Persistence\ManagerRegistryRepositoryDynamicReturn\MyEntity>', $repo);
+        assertType('Doctrine\ORM\QueryBuilder', $repo->createQueryBuilder('e'));
     }
 }
 

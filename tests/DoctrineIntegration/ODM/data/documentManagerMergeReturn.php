@@ -1,30 +1,33 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\DoctrineIntegration\ODM\DocumentManagerMergeReturn;
 
 use Doctrine\ODM\MongoDB\DocumentManager;
 use Doctrine\ODM\MongoDB\Mapping\Annotations\Document;
 use Doctrine\ODM\MongoDB\Mapping\Annotations\Id;
+
 use function PHPStan\Testing\assertType;
 
 class Example
 {
-	/**
-	 * @var DocumentManager
-	 */
-	private $documentManager;
+    /**
+     * @var DocumentManager
+     */
+    private $documentManager;
 
-	public function __construct(DocumentManager $documentManager)
-	{
-		$this->documentManager = $documentManager;
-	}
+    public function __construct(DocumentManager $documentManager)
+    {
+        $this->documentManager = $documentManager;
+    }
 
-	public function merge(): void
-	{
-		$test = $this->documentManager->merge(new MyDocument());
-		assertType(MyDocument::class, $test);
-		$test->doSomething();
-	}
+    public function merge(): void
+    {
+        $test = $this->documentManager->merge(new MyDocument());
+        assertType(MyDocument::class, $test);
+        $test->doSomething();
+    }
 }
 
 /**
@@ -32,14 +35,14 @@ class Example
  */
 class MyDocument
 {
-	/**
-	 * @Id(strategy="NONE", type="string")
-	 *
-	 * @var string
-	 */
-	private $id;
+    /**
+     * @Id(strategy="NONE", type="string")
+     *
+     * @var string
+     */
+    private $id;
 
-	public function doSomething(): void
-	{
-	}
+    public function doSomething(): void
+    {
+    }
 }

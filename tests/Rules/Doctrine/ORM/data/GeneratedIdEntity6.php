@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Rules\Doctrine\ORM;
 
@@ -9,12 +11,11 @@ use Doctrine\ORM\Mapping as ORM;
  */
 class GeneratedIdEntity6
 {
-
-	/**
-	 * @ORM\Id()
-	 * @ORM\Column(type="integer", nullable=false)
-	 * @var int|null
-	 */
-	private $id;
+    /**
+     * @ORM\Id()
+     * @ORM\Column(type="integer", nullable=false)
+     * @var int|null
+     */
+    private $id;
 
 }

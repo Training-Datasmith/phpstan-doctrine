@@ -1,12 +1,22 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Rules\Doctrine\ORM;
 
+use function array_unshift;
+
 use Carbon\Doctrine\CarbonImmutableType;
 use Carbon\Doctrine\CarbonType;
+
+use function class_exists;
+
 use Composer\InstalledVersions;
 use Doctrine\DBAL\Types\Type;
 use Iterator;
+
+use const PHP_VERSION_ID;
+
 use PHPStan\Doctrine\Driver\DriverDetector;
 use PHPStan\Rules\Rule;
 use PHPStan\Testing\RuleTestCase;
@@ -28,11 +38,9 @@ use PHPStan\Type\Doctrine\Descriptors\StringType;
 use PHPStan\Type\Doctrine\Descriptors\Symfony\UlidTypeDescriptor as SymfonyUlidTypeDescriptor;
 use PHPStan\Type\Doctrine\Descriptors\Symfony\UuidTypeDescriptor as SymfonyUuidTypeDescriptor;
 use PHPStan\Type\Doctrine\ObjectMetadataResolver;
-use function array_unshift;
-use function class_exists;
+
 use function sprintf;
 use function strpos;
-use const PHP_VERSION_ID;
 
 /**
  * @extends RuleTestCase<EntityColumnRule>
@@ -40,539 +48,538 @@ use const PHP_VERSION_ID;
  */
 class EntityColumnRuleTest extends RuleTestCase
 {
+    private bool $allowNullablePropertyForRequiredField;
 
-	private bool $allowNullablePropertyForRequiredField;
+    private ?string $objectManagerLoader = null;
 
-	private ?string $objectManagerLoader = null;
+    private bool $useSymfonyUuid = false;
 
-	private bool $useSymfonyUuid = false;
+    protected function getRule(): Rule
+    {
+        if (!Type::hasType(CustomType::NAME)) {
+            Type::addType(CustomType::NAME, CustomType::class);
+        }
+        if (!Type::hasType(CustomNumericType::NAME)) {
+            Type::addType(CustomNumericType::NAME, CustomNumericType::class);
+        }
+        if ($this->useSymfonyUuid) {
+            if (!Type::hasType(FakeTestingSymfonyUuidType::NAME)) {
+                Type::addType(FakeTestingSymfonyUuidType::NAME, FakeTestingSymfonyUuidType::class);
+            } else {
+                // Override Ramsay definition
+                Type::overrideType(FakeTestingSymfonyUuidType::NAME, FakeTestingSymfonyUuidType::class);
+            }
+            if (!Type::hasType(FakeTestingSymfonyUlidType::NAME)) {
+                Type::addType(FakeTestingSymfonyUlidType::NAME, FakeTestingSymfonyUlidType::class);
+            }
+        } else {
+            if (!Type::hasType(FakeTestingRamseyUuidType::NAME)) {
+                Type::addType(FakeTestingRamseyUuidType::NAME, FakeTestingRamseyUuidType::class);
+            } else {
+                // Override Symfony definition
+                Type::overrideType(FakeTestingRamseyUuidType::NAME, FakeTestingRamseyUuidType::class);
+            }
+        }
+        if (!Type::hasType('carbon')) {
+            Type::addType('carbon', CarbonType::class);
+        }
+        if (!Type::hasType('carbon_immutable')) {
+            Type::addType('carbon_immutable', CarbonImmutableType::class);
+        }
+        if (!Type::hasType('array')) {
+            Type::addType('array', \Doctrine\DBAL\Types\ArrayType::class);
+        }
 
-	protected function getRule(): Rule
-	{
-		if (!Type::hasType(CustomType::NAME)) {
-			Type::addType(CustomType::NAME, CustomType::class);
-		}
-		if (!Type::hasType(CustomNumericType::NAME)) {
-			Type::addType(CustomNumericType::NAME, CustomNumericType::class);
-		}
-		if ($this->useSymfonyUuid) {
-			if (!Type::hasType(FakeTestingSymfonyUuidType::NAME)) {
-				Type::addType(FakeTestingSymfonyUuidType::NAME, FakeTestingSymfonyUuidType::class);
-			} else {
-				// Override Ramsay definition
-				Type::overrideType(FakeTestingSymfonyUuidType::NAME, FakeTestingSymfonyUuidType::class);
-			}
-			if (!Type::hasType(FakeTestingSymfonyUlidType::NAME)) {
-				Type::addType(FakeTestingSymfonyUlidType::NAME, FakeTestingSymfonyUlidType::class);
-			}
-		} else {
-			if (!Type::hasType(FakeTestingRamseyUuidType::NAME)) {
-				Type::addType(FakeTestingRamseyUuidType::NAME, FakeTestingRamseyUuidType::class);
-			} else {
-				// Override Symfony definition
-				Type::overrideType(FakeTestingRamseyUuidType::NAME, FakeTestingRamseyUuidType::class);
-			}
-		}
-		if (!Type::hasType('carbon')) {
-			Type::addType('carbon', CarbonType::class);
-		}
-		if (!Type::hasType('carbon_immutable')) {
-			Type::addType('carbon_immutable', CarbonImmutableType::class);
-		}
-		if (!Type::hasType('array')) {
-			Type::addType('array', \Doctrine\DBAL\Types\ArrayType::class);
-		}
+        return new EntityColumnRule(
+            new ObjectMetadataResolver($this->objectManagerLoader, __DIR__ . '/../../../../tmp'),
+            new DefaultDescriptorRegistry([
+                new ArrayType(),
+                new BigIntType(),
+                new BinaryType(),
+                new DateTimeImmutableType(),
+                new DateTimeType(),
+                new DateType(),
+                new DecimalType(new DriverDetector()),
+                new JsonType(),
+                new IntegerType(),
+                new StringType(),
+                new SimpleArrayType(),
+                new EnumType(),
+                new RamseyUuidTypeDescriptor(FakeTestingRamseyUuidType::class),
+                new SymfonyUuidTypeDescriptor(FakeTestingSymfonyUuidType::class),
+                new SymfonyUlidTypeDescriptor(FakeTestingSymfonyUlidType::class),
+                new ReflectionDescriptor(CarbonImmutableType::class, $this->createReflectionProvider(), self::getContainer()),
+                new ReflectionDescriptor(CarbonType::class, $this->createReflectionProvider(), self::getContainer()),
+                new ReflectionDescriptor(CustomType::class, $this->createReflectionProvider(), self::getContainer()),
+                new ReflectionDescriptor(CustomNumericType::class, $this->createReflectionProvider(), self::getContainer()),
+            ]),
+            $this->createReflectionProvider(),
+            true,
+            $this->allowNullablePropertyForRequiredField,
+        );
+    }
 
-		return new EntityColumnRule(
-			new ObjectMetadataResolver($this->objectManagerLoader, __DIR__ . '/../../../../tmp'),
-			new DefaultDescriptorRegistry([
-				new ArrayType(),
-				new BigIntType(),
-				new BinaryType(),
-				new DateTimeImmutableType(),
-				new DateTimeType(),
-				new DateType(),
-				new DecimalType(new DriverDetector()),
-				new JsonType(),
-				new IntegerType(),
-				new StringType(),
-				new SimpleArrayType(),
-				new EnumType(),
-				new RamseyUuidTypeDescriptor(FakeTestingRamseyUuidType::class),
-				new SymfonyUuidTypeDescriptor(FakeTestingSymfonyUuidType::class),
-				new SymfonyUlidTypeDescriptor(FakeTestingSymfonyUlidType::class),
-				new ReflectionDescriptor(CarbonImmutableType::class, $this->createReflectionProvider(), self::getContainer()),
-				new ReflectionDescriptor(CarbonType::class, $this->createReflectionProvider(), self::getContainer()),
-				new ReflectionDescriptor(CustomType::class, $this->createReflectionProvider(), self::getContainer()),
-				new ReflectionDescriptor(CustomNumericType::class, $this->createReflectionProvider(), self::getContainer()),
-			]),
-			$this->createReflectionProvider(),
-			true,
-			$this->allowNullablePropertyForRequiredField,
-		);
-	}
+    /**
+     * @return array<array{string|null}>
+     */
+    public function dataObjectManagerLoader(): array
+    {
+        return [
+            [__DIR__ . '/entity-manager.php'],
+            [null],
+        ];
+    }
 
-	/**
-	 * @return array<array{string|null}>
-	 */
-	public function dataObjectManagerLoader(): array
-	{
-		return [
-			[__DIR__ . '/entity-manager.php'],
-			[null],
-		];
-	}
+    /**
+     * @dataProvider dataObjectManagerLoader
+     */
+    public function testRule(?string $objectManagerLoader): void
+    {
+        $this->allowNullablePropertyForRequiredField = false;
+        $this->objectManagerLoader = $objectManagerLoader;
 
-	/**
-	 * @dataProvider dataObjectManagerLoader
-	 */
-	public function testRule(?string $objectManagerLoader): void
-	{
-		$this->allowNullablePropertyForRequiredField = false;
-		$this->objectManagerLoader = $objectManagerLoader;
+        $errors = [
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$one type mapping mismatch: database can contain string|null but property expects string.',
+                25,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$two type mapping mismatch: property can contain string|null but database expects string.',
+                31,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$three type mapping mismatch: database can contain DateTime but property expects DateTimeImmutable.',
+                37,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$four type mapping mismatch: database can contain DateTimeImmutable but property expects DateTime.',
+                43,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$four type mapping mismatch: property can contain DateTime but database expects DateTimeImmutable.',
+                43,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$uuidInvalidType type mapping mismatch: database can contain Ramsey\Uuid\UuidInterface but property expects int.',
+                72,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$uuidInvalidType type mapping mismatch: property can contain int but database expects Ramsey\Uuid\UuidInterface|string.',
+                72,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$arrayOrNull type mapping mismatch: property can contain array|null but database expects array.',
+                96,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$arrayOfIntegersOrNull type mapping mismatch: property can contain array|null but database expects array.',
+                102,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$numericString type mapping mismatch: database can contain string but property expects numeric-string.',
+                126,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$invalidCarbon type mapping mismatch: database can contain Carbon\Carbon but property expects Carbon\CarbonImmutable.',
+                132,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$invalidCarbonImmutable type mapping mismatch: database can contain Carbon\CarbonImmutable but property expects Carbon\Carbon.',
+                138,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$incompatibleJsonValueObject type mapping mismatch: property can contain PHPStan\Rules\Doctrine\ORM\EmptyObject but database expects array|bool|float|int|JsonSerializable|stdClass|string|null.',
+                156,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$invalidSimpleArray type mapping mismatch: database can contain list<string> but property expects array<int>.',
+                162,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$invalidSimpleArray type mapping mismatch: property can contain array<int> but database expects array<string>.',
+                162,
+            ],
+        ];
 
-		$errors = [
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$one type mapping mismatch: database can contain string|null but property expects string.',
-				25,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$two type mapping mismatch: property can contain string|null but database expects string.',
-				31,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$three type mapping mismatch: database can contain DateTime but property expects DateTimeImmutable.',
-				37,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$four type mapping mismatch: database can contain DateTimeImmutable but property expects DateTime.',
-				43,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$four type mapping mismatch: property can contain DateTime but database expects DateTimeImmutable.',
-				43,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$uuidInvalidType type mapping mismatch: database can contain Ramsey\Uuid\UuidInterface but property expects int.',
-				72,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$uuidInvalidType type mapping mismatch: property can contain int but database expects Ramsey\Uuid\UuidInterface|string.',
-				72,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$arrayOrNull type mapping mismatch: property can contain array|null but database expects array.',
-				96,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$arrayOfIntegersOrNull type mapping mismatch: property can contain array|null but database expects array.',
-				102,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$numericString type mapping mismatch: database can contain string but property expects numeric-string.',
-				126,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$invalidCarbon type mapping mismatch: database can contain Carbon\Carbon but property expects Carbon\CarbonImmutable.',
-				132,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$invalidCarbonImmutable type mapping mismatch: database can contain Carbon\CarbonImmutable but property expects Carbon\Carbon.',
-				138,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$incompatibleJsonValueObject type mapping mismatch: property can contain PHPStan\Rules\Doctrine\ORM\EmptyObject but database expects array|bool|float|int|JsonSerializable|stdClass|string|null.',
-				156,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$invalidSimpleArray type mapping mismatch: database can contain list<string> but property expects array<int>.',
-				162,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$invalidSimpleArray type mapping mismatch: property can contain array<int> but database expects array<string>.',
-				162,
-			],
-		];
+        $dbalVersion = InstalledVersions::getVersion('doctrine/dbal');
+        $hasDbal4 = $dbalVersion !== null && strpos($dbalVersion, '4.') === 0;
+        if (!$hasDbal4) {
+            array_unshift($errors, [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$id type mapping mismatch: database can contain string but property expects int|null.',
+                19,
+            ]);
+        }
 
-		$dbalVersion = InstalledVersions::getVersion('doctrine/dbal');
-		$hasDbal4 = $dbalVersion !== null && strpos($dbalVersion, '4.') === 0;
-		if (!$hasDbal4) {
-			array_unshift($errors, [
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$id type mapping mismatch: database can contain string but property expects int|null.',
-				19,
-			]);
-		}
+        $this->analyse([__DIR__ . '/data/MyBrokenEntity.php'], $errors);
+    }
 
-		$this->analyse([__DIR__ . '/data/MyBrokenEntity.php'], $errors);
-	}
+    /**
+     * @dataProvider dataObjectManagerLoader
+     */
+    public function testRuleWithAllowedNullableProperty(?string $objectManagerLoader): void
+    {
+        $this->allowNullablePropertyForRequiredField = true;
+        $this->objectManagerLoader = $objectManagerLoader;
 
-	/**
-	 * @dataProvider dataObjectManagerLoader
-	 */
-	public function testRuleWithAllowedNullableProperty(?string $objectManagerLoader): void
-	{
-		$this->allowNullablePropertyForRequiredField = true;
-		$this->objectManagerLoader = $objectManagerLoader;
+        $errors = [
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$one type mapping mismatch: database can contain string|null but property expects string.',
+                25,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$three type mapping mismatch: database can contain DateTime but property expects DateTimeImmutable.',
+                37,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$four type mapping mismatch: database can contain DateTimeImmutable but property expects DateTime.',
+                43,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$four type mapping mismatch: property can contain DateTime but database expects DateTimeImmutable.',
+                43,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$uuidInvalidType type mapping mismatch: database can contain Ramsey\Uuid\UuidInterface but property expects int.',
+                72,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$uuidInvalidType type mapping mismatch: property can contain int but database expects Ramsey\Uuid\UuidInterface|string.',
+                72,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$numericString type mapping mismatch: database can contain string but property expects numeric-string.',
+                126,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$invalidCarbon type mapping mismatch: database can contain Carbon\Carbon but property expects Carbon\CarbonImmutable.',
+                132,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$invalidCarbonImmutable type mapping mismatch: database can contain Carbon\CarbonImmutable but property expects Carbon\Carbon.',
+                138,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$incompatibleJsonValueObject type mapping mismatch: property can contain PHPStan\Rules\Doctrine\ORM\EmptyObject but database expects array|bool|float|int|JsonSerializable|stdClass|string|null.',
+                156,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$invalidSimpleArray type mapping mismatch: database can contain list<string> but property expects array<int>.',
+                162,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$invalidSimpleArray type mapping mismatch: property can contain array<int> but database expects array<string>.',
+                162,
+            ],
+        ];
 
-		$errors = [
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$one type mapping mismatch: database can contain string|null but property expects string.',
-				25,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$three type mapping mismatch: database can contain DateTime but property expects DateTimeImmutable.',
-				37,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$four type mapping mismatch: database can contain DateTimeImmutable but property expects DateTime.',
-				43,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$four type mapping mismatch: property can contain DateTime but database expects DateTimeImmutable.',
-				43,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$uuidInvalidType type mapping mismatch: database can contain Ramsey\Uuid\UuidInterface but property expects int.',
-				72,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$uuidInvalidType type mapping mismatch: property can contain int but database expects Ramsey\Uuid\UuidInterface|string.',
-				72,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$numericString type mapping mismatch: database can contain string but property expects numeric-string.',
-				126,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$invalidCarbon type mapping mismatch: database can contain Carbon\Carbon but property expects Carbon\CarbonImmutable.',
-				132,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$invalidCarbonImmutable type mapping mismatch: database can contain Carbon\CarbonImmutable but property expects Carbon\Carbon.',
-				138,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$incompatibleJsonValueObject type mapping mismatch: property can contain PHPStan\Rules\Doctrine\ORM\EmptyObject but database expects array|bool|float|int|JsonSerializable|stdClass|string|null.',
-				156,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$invalidSimpleArray type mapping mismatch: database can contain list<string> but property expects array<int>.',
-				162,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$invalidSimpleArray type mapping mismatch: property can contain array<int> but database expects array<string>.',
-				162,
-			],
-		];
+        $dbalVersion = InstalledVersions::getVersion('doctrine/dbal');
+        $hasDbal4 = $dbalVersion !== null && strpos($dbalVersion, '4.') === 0;
+        if (!$hasDbal4) {
+            array_unshift($errors, [
+                'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$id type mapping mismatch: database can contain string but property expects int|null.',
+                19,
+            ]);
+        }
 
-		$dbalVersion = InstalledVersions::getVersion('doctrine/dbal');
-		$hasDbal4 = $dbalVersion !== null && strpos($dbalVersion, '4.') === 0;
-		if (!$hasDbal4) {
-			array_unshift($errors, [
-				'Property PHPStan\Rules\Doctrine\ORM\MyBrokenEntity::$id type mapping mismatch: database can contain string but property expects int|null.',
-				19,
-			]);
-		}
+        $this->analyse([__DIR__ . '/data/MyBrokenEntity.php'], $errors);
+    }
 
-		$this->analyse([__DIR__ . '/data/MyBrokenEntity.php'], $errors);
-	}
+    /**
+     * @dataProvider dataObjectManagerLoader
+     */
+    public function testRuleOnMyEntity(?string $objectManagerLoader): void
+    {
+        $this->allowNullablePropertyForRequiredField = false;
+        $this->objectManagerLoader = $objectManagerLoader;
+        $this->analyse([__DIR__ . '/data/MyEntity.php'], []);
+    }
 
-	/**
-	 * @dataProvider dataObjectManagerLoader
-	 */
-	public function testRuleOnMyEntity(?string $objectManagerLoader): void
-	{
-		$this->allowNullablePropertyForRequiredField = false;
-		$this->objectManagerLoader = $objectManagerLoader;
-		$this->analyse([__DIR__ . '/data/MyEntity.php'], []);
-	}
+    /**
+     * @dataProvider dataObjectManagerLoader
+     */
+    public function testSuperclass(?string $objectManagerLoader): void
+    {
+        $this->allowNullablePropertyForRequiredField = false;
+        $this->objectManagerLoader = $objectManagerLoader;
 
-	/**
-	 * @dataProvider dataObjectManagerLoader
-	 */
-	public function testSuperclass(?string $objectManagerLoader): void
-	{
-		$this->allowNullablePropertyForRequiredField = false;
-		$this->objectManagerLoader = $objectManagerLoader;
+        $dbalVersion = InstalledVersions::getVersion('doctrine/dbal');
+        $hasDbal4 = $dbalVersion !== null && strpos($dbalVersion, '4.') === 0;
 
-		$dbalVersion = InstalledVersions::getVersion('doctrine/dbal');
-		$hasDbal4 = $dbalVersion !== null && strpos($dbalVersion, '4.') === 0;
+        $this->analyse([__DIR__ . '/data/MyBrokenSuperclass.php'], [
+            [
+                sprintf(
+                    'Property PHPStan\Rules\Doctrine\ORM\MyBrokenSuperclass::$five type mapping mismatch: database can contain %s but property expects int.',
+                    $hasDbal4 ? 'string' : 'resource',
+                ),
+                17,
+            ],
+        ]);
+    }
 
-		$this->analyse([__DIR__ . '/data/MyBrokenSuperclass.php'], [
-			[
-				sprintf(
-					'Property PHPStan\Rules\Doctrine\ORM\MyBrokenSuperclass::$five type mapping mismatch: database can contain %s but property expects int.',
-					$hasDbal4 ? 'string' : 'resource',
-				),
-				17,
-			],
-		]);
-	}
+    /**
+     * @dataProvider generatedIdsProvider
+     * @param list<array{0: string, 1: int, 2?: string}> $expectedErrors
+     */
+    public function testGeneratedIds(string $file, array $expectedErrors, ?string $objectManagerLoader): void
+    {
+        $this->allowNullablePropertyForRequiredField = false;
+        $this->objectManagerLoader = $objectManagerLoader;
+        $this->analyse([$file], $expectedErrors);
+    }
 
-	/**
-	 * @dataProvider generatedIdsProvider
-	 * @param list<array{0: string, 1: int, 2?: string}> $expectedErrors
-	 */
-	public function testGeneratedIds(string $file, array $expectedErrors, ?string $objectManagerLoader): void
-	{
-		$this->allowNullablePropertyForRequiredField = false;
-		$this->objectManagerLoader = $objectManagerLoader;
-		$this->analyse([$file], $expectedErrors);
-	}
+    /**
+     * @return Iterator<string, mixed[]>
+     */
+    public function generatedIdsProvider(): Iterator
+    {
+        yield 'not nullable' => [__DIR__ . '/data/GeneratedIdEntity1.php', [], __DIR__ . '/entity-manager.php'];
+        yield 'not nullable 2' => [__DIR__ . '/data/GeneratedIdEntity1.php', [], null];
+        yield 'nullable column' => [
+            __DIR__ . '/data/GeneratedIdEntity2.php',
+            [
+                [
+                    'Property PHPStan\Rules\Doctrine\ORM\GeneratedIdEntity2::$id type mapping mismatch: database can contain int|null but property expects int.',
+                    19,
+                ],
+            ],
+            __DIR__ . '/entity-manager.php',
+        ];
+        yield 'nullable column 2' => [
+            __DIR__ . '/data/GeneratedIdEntity2.php',
+            [
+                [
+                    'Property PHPStan\Rules\Doctrine\ORM\GeneratedIdEntity2::$id type mapping mismatch: database can contain int|null but property expects int.',
+                    19,
+                ],
+            ],
+            null,
+        ];
+        yield 'nullable property' => [__DIR__ . '/data/GeneratedIdEntity3.php', [], __DIR__ . '/entity-manager.php'];
+        yield 'nullable property 2' => [__DIR__ . '/data/GeneratedIdEntity3.php', [], null];
+        yield 'nullable both' => [__DIR__ . '/data/GeneratedIdEntity4.php', [], __DIR__ . '/entity-manager.php'];
+        yield 'nullable both 2' => [__DIR__ . '/data/GeneratedIdEntity4.php', [], null];
+        yield 'composite' => [__DIR__ . '/data/CompositePrimaryKeyEntity1.php', [], __DIR__ . '/entity-manager.php'];
+        yield 'composite 2' => [__DIR__ . '/data/CompositePrimaryKeyEntity1.php', [], null];
+        yield 'no generated value 1' => [__DIR__ . '/data/GeneratedIdEntity5.php', [], __DIR__ . '/entity-manager.php'];
+        yield 'no generated value 1 2' => [__DIR__ . '/data/GeneratedIdEntity5.php', [], null];
+        yield 'no generated value 2' => [__DIR__ . '/data/GeneratedIdEntity6.php', [
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\GeneratedIdEntity6::$id type mapping mismatch: property can contain int|null but database expects int.',
+                18,
+            ],
+        ], __DIR__ . '/entity-manager.php'];
+        yield 'no generated value 2 2' => [__DIR__ . '/data/GeneratedIdEntity6.php', [
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\GeneratedIdEntity6::$id type mapping mismatch: property can contain int|null but database expects int.',
+                18,
+            ],
+        ], null];
+    }
 
-	/**
-	 * @return Iterator<string, mixed[]>
-	 */
-	public function generatedIdsProvider(): Iterator
-	{
-		yield 'not nullable' => [__DIR__ . '/data/GeneratedIdEntity1.php', [], __DIR__ . '/entity-manager.php'];
-		yield 'not nullable 2' => [__DIR__ . '/data/GeneratedIdEntity1.php', [], null];
-		yield 'nullable column' => [
-			__DIR__ . '/data/GeneratedIdEntity2.php',
-			[
-				[
-					'Property PHPStan\Rules\Doctrine\ORM\GeneratedIdEntity2::$id type mapping mismatch: database can contain int|null but property expects int.',
-					19,
-				],
-			],
-			__DIR__ . '/entity-manager.php',
-		];
-		yield 'nullable column 2' => [
-			__DIR__ . '/data/GeneratedIdEntity2.php',
-			[
-				[
-					'Property PHPStan\Rules\Doctrine\ORM\GeneratedIdEntity2::$id type mapping mismatch: database can contain int|null but property expects int.',
-					19,
-				],
-			],
-			null,
-		];
-		yield 'nullable property' => [__DIR__ . '/data/GeneratedIdEntity3.php', [], __DIR__ . '/entity-manager.php'];
-		yield 'nullable property 2' => [__DIR__ . '/data/GeneratedIdEntity3.php', [], null];
-		yield 'nullable both' => [__DIR__ . '/data/GeneratedIdEntity4.php', [], __DIR__ . '/entity-manager.php'];
-		yield 'nullable both 2' => [__DIR__ . '/data/GeneratedIdEntity4.php', [], null];
-		yield 'composite' => [__DIR__ . '/data/CompositePrimaryKeyEntity1.php', [], __DIR__ . '/entity-manager.php'];
-		yield 'composite 2' => [__DIR__ . '/data/CompositePrimaryKeyEntity1.php', [], null];
-		yield 'no generated value 1' => [__DIR__ . '/data/GeneratedIdEntity5.php', [], __DIR__ . '/entity-manager.php'];
-		yield 'no generated value 1 2' => [__DIR__ . '/data/GeneratedIdEntity5.php', [], null];
-		yield 'no generated value 2' => [__DIR__ . '/data/GeneratedIdEntity6.php', [
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\GeneratedIdEntity6::$id type mapping mismatch: property can contain int|null but database expects int.',
-				18,
-			],
-		], __DIR__ . '/entity-manager.php'];
-		yield 'no generated value 2 2' => [__DIR__ . '/data/GeneratedIdEntity6.php', [
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\GeneratedIdEntity6::$id type mapping mismatch: property can contain int|null but database expects int.',
-				18,
-			],
-		], null];
-	}
+    /**
+     * @dataProvider dataObjectManagerLoader
+     */
+    public function testCustomType(?string $objectManagerLoader): void
+    {
+        $this->allowNullablePropertyForRequiredField = false;
+        $this->objectManagerLoader = $objectManagerLoader;
+        $this->analyse([__DIR__ . '/data/EntityWithCustomType.php'], [
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\EntityWithCustomType::$foo type mapping mismatch: database can contain DateTimeInterface but property expects int.',
+                24,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\EntityWithCustomType::$foo type mapping mismatch: property can contain int but database expects array.',
+                24,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\EntityWithCustomType::$numeric type mapping mismatch: property can contain string but database expects numeric-string.',
+                30,
+            ],
+        ]);
+    }
 
-	/**
-	 * @dataProvider dataObjectManagerLoader
-	 */
-	public function testCustomType(?string $objectManagerLoader): void
-	{
-		$this->allowNullablePropertyForRequiredField = false;
-		$this->objectManagerLoader = $objectManagerLoader;
-		$this->analyse([__DIR__ . '/data/EntityWithCustomType.php'], [
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\EntityWithCustomType::$foo type mapping mismatch: database can contain DateTimeInterface but property expects int.',
-				24,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\EntityWithCustomType::$foo type mapping mismatch: property can contain int but database expects array.',
-				24,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\EntityWithCustomType::$numeric type mapping mismatch: property can contain string but database expects numeric-string.',
-				30,
-			],
-		]);
-	}
+    /**
+     * @dataProvider dataObjectManagerLoader
+     */
+    public function testUnknownType(?string $objectManagerLoader): void
+    {
+        $this->allowNullablePropertyForRequiredField = false;
+        $this->objectManagerLoader = $objectManagerLoader;
+        $this->analyse([__DIR__ . '/data/EntityWithUnknownType.php'], [
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\EntityWithUnknownType::$foo: Doctrine type "unknown" does not have any registered descriptor.',
+                24,
+            ],
+        ]);
+    }
 
-	/**
-	 * @dataProvider dataObjectManagerLoader
-	 */
-	public function testUnknownType(?string $objectManagerLoader): void
-	{
-		$this->allowNullablePropertyForRequiredField = false;
-		$this->objectManagerLoader = $objectManagerLoader;
-		$this->analyse([__DIR__ . '/data/EntityWithUnknownType.php'], [
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\EntityWithUnknownType::$foo: Doctrine type "unknown" does not have any registered descriptor.',
-				24,
-			],
-		]);
-	}
+    /**
+     * @dataProvider dataObjectManagerLoader
+     */
+    public function testEnumType(?string $objectManagerLoader): void
+    {
+        if (PHP_VERSION_ID < 80100) {
+            self::markTestSkipped('Test requires PHP 8.1.');
+        }
 
-	/**
-	 * @dataProvider dataObjectManagerLoader
-	 */
-	public function testEnumType(?string $objectManagerLoader): void
-	{
-		if (PHP_VERSION_ID < 80100) {
-			self::markTestSkipped('Test requires PHP 8.1.');
-		}
+        $this->allowNullablePropertyForRequiredField = false;
+        $this->objectManagerLoader = $objectManagerLoader;
+        $this->analyse([__DIR__ . '/data-attributes/enum-type.php'], [
+            [
+                'Property PHPStan\Rules\Doctrine\ORMAttributes\Foo::$type2 type mapping mismatch: database can contain PHPStan\Rules\Doctrine\ORMAttributes\FooEnum but property expects PHPStan\Rules\Doctrine\ORMAttributes\BarEnum.',
+                42,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORMAttributes\Foo::$type2 type mapping mismatch: property can contain PHPStan\Rules\Doctrine\ORMAttributes\BarEnum but database expects PHPStan\Rules\Doctrine\ORMAttributes\FooEnum.',
+                42,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORMAttributes\Foo::$type3 type mapping mismatch: backing type string of enum PHPStan\Rules\Doctrine\ORMAttributes\FooEnum does not match database type int.',
+                45,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORMAttributes\Foo::$type5 type mapping mismatch: database can contain list<PHPStan\Rules\Doctrine\ORMAttributes\FooEnum> but property expects PHPStan\Rules\Doctrine\ORMAttributes\FooEnum.',
+                51,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORMAttributes\Foo::$type5 type mapping mismatch: property can contain PHPStan\Rules\Doctrine\ORMAttributes\FooEnum but database expects array<PHPStan\Rules\Doctrine\ORMAttributes\FooEnum>.',
+                51,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORMAttributes\Foo::$type7 type mapping mismatch: backing type int of enum PHPStan\Rules\Doctrine\ORMAttributes\BazEnum does not match value type string of the database type array<string>.',
+                63,
+            ],
+        ]);
+    }
 
-		$this->allowNullablePropertyForRequiredField = false;
-		$this->objectManagerLoader = $objectManagerLoader;
-		$this->analyse([__DIR__ . '/data-attributes/enum-type.php'], [
-			[
-				'Property PHPStan\Rules\Doctrine\ORMAttributes\Foo::$type2 type mapping mismatch: database can contain PHPStan\Rules\Doctrine\ORMAttributes\FooEnum but property expects PHPStan\Rules\Doctrine\ORMAttributes\BarEnum.',
-				42,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORMAttributes\Foo::$type2 type mapping mismatch: property can contain PHPStan\Rules\Doctrine\ORMAttributes\BarEnum but database expects PHPStan\Rules\Doctrine\ORMAttributes\FooEnum.',
-				42,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORMAttributes\Foo::$type3 type mapping mismatch: backing type string of enum PHPStan\Rules\Doctrine\ORMAttributes\FooEnum does not match database type int.',
-				45,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORMAttributes\Foo::$type5 type mapping mismatch: database can contain list<PHPStan\Rules\Doctrine\ORMAttributes\FooEnum> but property expects PHPStan\Rules\Doctrine\ORMAttributes\FooEnum.',
-				51,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORMAttributes\Foo::$type5 type mapping mismatch: property can contain PHPStan\Rules\Doctrine\ORMAttributes\FooEnum but database expects array<PHPStan\Rules\Doctrine\ORMAttributes\FooEnum>.',
-				51,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORMAttributes\Foo::$type7 type mapping mismatch: backing type int of enum PHPStan\Rules\Doctrine\ORMAttributes\BazEnum does not match value type string of the database type array<string>.',
-				63,
-			],
-		]);
-	}
+    /**
+     * @dataProvider dataObjectManagerLoader
+     */
+    public function testPhpStanBug6445(?string $objectManagerLoader): void
+    {
+        $this->allowNullablePropertyForRequiredField = false;
+        $this->objectManagerLoader = $objectManagerLoader;
+        $this->analyse([__DIR__ . '/data/phpstan-bug-6445.php'], []);
+    }
 
-	/**
-	 * @dataProvider dataObjectManagerLoader
-	 */
-	public function testPhpStanBug6445(?string $objectManagerLoader): void
-	{
-		$this->allowNullablePropertyForRequiredField = false;
-		$this->objectManagerLoader = $objectManagerLoader;
-		$this->analyse([__DIR__ . '/data/phpstan-bug-6445.php'], []);
-	}
+    /**
+     * @dataProvider dataObjectManagerLoader
+     */
+    public function testBug306(?string $objectManagerLoader): void
+    {
+        if (PHP_VERSION_ID < 80000) {
+            self::markTestSkipped('Test requires PHP 8.0');
+        }
+        $this->allowNullablePropertyForRequiredField = false;
+        $this->objectManagerLoader = $objectManagerLoader;
+        $this->analyse([__DIR__ . '/data/bug-306.php'], [
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\Bug306\MyBrokenEntity::$one type mapping mismatch: database can contain string|null but property expects string.',
+                25,
+            ],
+        ]);
+    }
 
-	/**
-	 * @dataProvider dataObjectManagerLoader
-	 */
-	public function testBug306(?string $objectManagerLoader): void
-	{
-		if (PHP_VERSION_ID < 80000) {
-			self::markTestSkipped('Test requires PHP 8.0');
-		}
-		$this->allowNullablePropertyForRequiredField = false;
-		$this->objectManagerLoader = $objectManagerLoader;
-		$this->analyse([__DIR__ . '/data/bug-306.php'], [
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\Bug306\MyBrokenEntity::$one type mapping mismatch: database can contain string|null but property expects string.',
-				25,
-			],
-		]);
-	}
+    /**
+     * @dataProvider dataObjectManagerLoader
+     */
+    public function testBug677(?string $objectManagerLoader): void
+    {
+        if (PHP_VERSION_ID < 80100) {
+            self::markTestSkipped('Test requires PHP 8.1');
+        }
+        if (!class_exists(\Doctrine\DBAL\Types\EnumType::class)) {
+            self::markTestSkipped('Test requires EnumType.');
+        }
 
-	/**
-	 * @dataProvider dataObjectManagerLoader
-	 */
-	public function testBug677(?string $objectManagerLoader): void
-	{
-		if (PHP_VERSION_ID < 80100) {
-			self::markTestSkipped('Test requires PHP 8.1');
-		}
-		if (!class_exists(\Doctrine\DBAL\Types\EnumType::class)) {
-			self::markTestSkipped('Test requires EnumType.');
-		}
+        $this->allowNullablePropertyForRequiredField = false;
+        $this->objectManagerLoader = $objectManagerLoader;
+        $this->analyse([__DIR__ . '/data/bug-677.php'], []);
+    }
 
-		$this->allowNullablePropertyForRequiredField = false;
-		$this->objectManagerLoader = $objectManagerLoader;
-		$this->analyse([__DIR__ . '/data/bug-677.php'], []);
-	}
+    /**
+     * @dataProvider dataObjectManagerLoader
+     */
+    public function testSymfonyUuid(?string $objectManagerLoader): void
+    {
+        $this->allowNullablePropertyForRequiredField = true;
+        $this->objectManagerLoader = $objectManagerLoader;
+        $this->useSymfonyUuid = true;
 
-	/**
-	 * @dataProvider dataObjectManagerLoader
-	 */
-	public function testSymfonyUuid(?string $objectManagerLoader): void
-	{
-		$this->allowNullablePropertyForRequiredField = true;
-		$this->objectManagerLoader = $objectManagerLoader;
-		$this->useSymfonyUuid = true;
+        $this->analyse([__DIR__ . '/data/EntityWithSymfonyUid.php'], [
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\EntityWithSymfonyUid::$uuidInvalidType type mapping mismatch: database can contain Symfony\Component\Uid\Uuid but property expects string.',
+                32,
+            ],
+            [
+                'Property PHPStan\Rules\Doctrine\ORM\EntityWithSymfonyUid::$ulidInvalidType type mapping mismatch: database can contain Symfony\Component\Uid\Ulid but property expects string.',
+                44,
+            ],
+        ]);
+    }
 
-		$this->analyse([__DIR__ . '/data/EntityWithSymfonyUid.php'], [
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\EntityWithSymfonyUid::$uuidInvalidType type mapping mismatch: database can contain Symfony\Component\Uid\Uuid but property expects string.',
-				32,
-			],
-			[
-				'Property PHPStan\Rules\Doctrine\ORM\EntityWithSymfonyUid::$ulidInvalidType type mapping mismatch: database can contain Symfony\Component\Uid\Ulid but property expects string.',
-				44,
-			],
-		]);
-	}
+    /**
+     * @dataProvider dataObjectManagerLoader
+     */
+    public function testBug679(?string $objectManagerLoader): void
+    {
+        if (PHP_VERSION_ID < 80100) {
+            self::markTestSkipped('Test requires PHP 8.1');
+        }
+        if (!class_exists(\Doctrine\DBAL\Types\EnumType::class)) {
+            self::markTestSkipped('Test requires EnumType.');
+        }
 
-	/**
-	 * @dataProvider dataObjectManagerLoader
-	 */
-	public function testBug679(?string $objectManagerLoader): void
-	{
-		if (PHP_VERSION_ID < 80100) {
-			self::markTestSkipped('Test requires PHP 8.1');
-		}
-		if (!class_exists(\Doctrine\DBAL\Types\EnumType::class)) {
-			self::markTestSkipped('Test requires EnumType.');
-		}
+        $this->allowNullablePropertyForRequiredField = false;
+        $this->objectManagerLoader = $objectManagerLoader;
+        $this->analyse([__DIR__ . '/data/bug-679.php'], []);
+    }
 
-		$this->allowNullablePropertyForRequiredField = false;
-		$this->objectManagerLoader = $objectManagerLoader;
-		$this->analyse([__DIR__ . '/data/bug-679.php'], []);
-	}
+    /**
+     * @dataProvider dataObjectManagerLoader
+     */
+    public function testBugSingleEnum(?string $objectManagerLoader): void
+    {
+        if (PHP_VERSION_ID < 80100) {
+            self::markTestSkipped('Test requires PHP 8.1');
+        }
+        if (!class_exists(\Doctrine\DBAL\Types\EnumType::class)) {
+            self::markTestSkipped('Test requires EnumType.');
+        }
 
-	/**
-	 * @dataProvider dataObjectManagerLoader
-	 */
-	public function testBugSingleEnum(?string $objectManagerLoader): void
-	{
-		if (PHP_VERSION_ID < 80100) {
-			self::markTestSkipped('Test requires PHP 8.1');
-		}
-		if (!class_exists(\Doctrine\DBAL\Types\EnumType::class)) {
-			self::markTestSkipped('Test requires EnumType.');
-		}
+        $this->allowNullablePropertyForRequiredField = false;
+        $this->objectManagerLoader = $objectManagerLoader;
+        $this->analyse([__DIR__ . '/data/bug-single-enum.php'], []);
+    }
 
-		$this->allowNullablePropertyForRequiredField = false;
-		$this->objectManagerLoader = $objectManagerLoader;
-		$this->analyse([__DIR__ . '/data/bug-single-enum.php'], []);
-	}
+    /**
+     * @dataProvider dataObjectManagerLoader
+     */
+    public function testBug659(?string $objectManagerLoader): void
+    {
+        $this->allowNullablePropertyForRequiredField = false;
+        $this->objectManagerLoader = $objectManagerLoader;
 
-	/**
-	 * @dataProvider dataObjectManagerLoader
-	 */
-	public function testBug659(?string $objectManagerLoader): void
-	{
-		$this->allowNullablePropertyForRequiredField = false;
-		$this->objectManagerLoader = $objectManagerLoader;
+        $dbalVersion = InstalledVersions::getVersion('doctrine/dbal');
+        $hasDbal4 = $dbalVersion !== null && strpos($dbalVersion, '4.') === 0;
+        if ($hasDbal4) {
+            $errors = [
+                [
+                    'Property PHPStan\Rules\Doctrine\ORM\MyEntity659::$binaryResource type mapping mismatch: database can contain string but property expects resource.',
+                    31,
+                ],
+            ];
+        } else {
+            $errors = [
+                [
+                    'Property PHPStan\Rules\Doctrine\ORM\MyEntity659::$binaryString type mapping mismatch: database can contain resource but property expects string.',
+                    25,
+                ],
+            ];
+        }
 
-		$dbalVersion = InstalledVersions::getVersion('doctrine/dbal');
-		$hasDbal4 = $dbalVersion !== null && strpos($dbalVersion, '4.') === 0;
-		if ($hasDbal4) {
-			$errors = [
-				[
-					'Property PHPStan\Rules\Doctrine\ORM\MyEntity659::$binaryResource type mapping mismatch: database can contain string but property expects resource.',
-					31,
-				],
-			];
-		} else {
-			$errors = [
-				[
-					'Property PHPStan\Rules\Doctrine\ORM\MyEntity659::$binaryString type mapping mismatch: database can contain resource but property expects string.',
-					25,
-				],
-			];
-		}
-
-		$this->analyse([__DIR__ . '/data/bug-659.php'], $errors);
-	}
+        $this->analyse([__DIR__ . '/data/bug-659.php'], $errors);
+    }
 
 }

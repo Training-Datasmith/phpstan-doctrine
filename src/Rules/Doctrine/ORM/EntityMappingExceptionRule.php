@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Rules\Doctrine\ORM;
 
@@ -17,54 +19,52 @@ use ReflectionException;
  */
 class EntityMappingExceptionRule implements Rule
 {
+    private ObjectMetadataResolver $objectMetadataResolver;
 
-	private ObjectMetadataResolver $objectMetadataResolver;
+    public function __construct(
+        ObjectMetadataResolver $objectMetadataResolver
+    ) {
+        $this->objectMetadataResolver = $objectMetadataResolver;
+    }
 
-	public function __construct(
-		ObjectMetadataResolver $objectMetadataResolver
-	)
-	{
-		$this->objectMetadataResolver = $objectMetadataResolver;
-	}
+    public function getNodeType(): string
+    {
+        return InClassNode::class;
+    }
 
-	public function getNodeType(): string
-	{
-		return InClassNode::class;
-	}
+    public function processNode(Node $node, Scope $scope): array
+    {
+        $class = $scope->getClassReflection();
+        if ($class === null) {
+            return [];
+        }
 
-	public function processNode(Node $node, Scope $scope): array
-	{
-		$class = $scope->getClassReflection();
-		if ($class === null) {
-			return [];
-		}
+        $objectManager = $this->objectMetadataResolver->getObjectManager();
+        if ($objectManager === null) {
+            return [];
+        }
 
-		$objectManager = $this->objectMetadataResolver->getObjectManager();
-		if ($objectManager === null) {
-			return [];
-		}
+        $className = $class->getName();
+        try {
+            if ($objectManager->getMetadataFactory()->isTransient($className)) {
+                return [];
+            }
+        } catch (ReflectionException $e) {
+            return [];
+        }
 
-		$className = $class->getName();
-		try {
-			if ($objectManager->getMetadataFactory()->isTransient($className)) {
-				return [];
-			}
-		} catch (ReflectionException $e) {
-			return [];
-		}
+        try {
+            $objectManager->getClassMetadata($className);
+        } catch (\Doctrine\Persistence\Mapping\MappingException | MappingException | AnnotationException $e) {
+            return [
+                RuleErrorBuilder::message($e->getMessage())
+                    ->nonIgnorable()
+                    ->identifier('doctrine.mapping')
+                    ->build(),
+            ];
+        }
 
-		try {
-			$objectManager->getClassMetadata($className);
-		} catch (\Doctrine\Persistence\Mapping\MappingException | MappingException | AnnotationException $e) {
-			return [
-				RuleErrorBuilder::message($e->getMessage())
-					->nonIgnorable()
-					->identifier('doctrine.mapping')
-					->build(),
-			];
-		}
-
-		return [];
-	}
+        return [];
+    }
 
 }

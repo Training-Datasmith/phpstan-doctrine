@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Rules\Doctrine\ORM;
 
@@ -7,22 +9,21 @@ use Doctrine\ORM\QueryBuilder;
 
 class ClassWithQueryBuilder
 {
+    /** @var EntityManager */
+    private $entityManager;
 
-	/** @var EntityManager */
-	private $entityManager;
+    public function __construct(EntityManager $entityManager)
+    {
+        $this->entityManager = $entityManager;
+    }
 
-	public function __construct(EntityManager $entityManager)
-	{
-		$this->entityManager = $entityManager;
-	}
+    public function getQueryBuilder(): QueryBuilder
+    {
+        $queryBuilder = $this->entityManager->createQueryBuilder();
+        $queryBuilder->select('e')
+            ->from(MyEntity::class, 'e');
 
-	public function getQueryBuilder(): QueryBuilder
-	{
-		$queryBuilder = $this->entityManager->createQueryBuilder();
-		$queryBuilder->select('e')
-			->from(MyEntity::class, 'e');
-
-		return $queryBuilder;
-	}
+        return $queryBuilder;
+    }
 
 }

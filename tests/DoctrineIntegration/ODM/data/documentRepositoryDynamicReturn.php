@@ -1,138 +1,142 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\DoctrineIntegration\ODM\DocumentRepositoryDynamicReturn;
 
 use Doctrine\ODM\MongoDB\DocumentManager;
-use Doctrine\ODM\MongoDB\Repository\DocumentRepository;
 use Doctrine\ODM\MongoDB\Mapping\Annotations\Document;
 use Doctrine\ODM\MongoDB\Mapping\Annotations\Id;
-use RuntimeException;
+use Doctrine\ODM\MongoDB\Repository\DocumentRepository;
+
 use function PHPStan\Testing\assertType;
+
+use RuntimeException;
 
 class Example
 {
-	/**
-	 * @var DocumentRepository
-	 */
-	private $repository;
+    /**
+     * @var DocumentRepository
+     */
+    private $repository;
 
-	public function __construct(DocumentManager $documentManager)
-	{
-		$this->repository = $documentManager->getRepository(MyDocument::class);
-	}
+    public function __construct(DocumentManager $documentManager)
+    {
+        $this->repository = $documentManager->getRepository(MyDocument::class);
+    }
 
-	public function findDynamicType(): void
-	{
-		$test = $this->repository->find(1);
+    public function findDynamicType(): void
+    {
+        $test = $this->repository->find(1);
 
-		if ($test === null) {
-			throw new RuntimeException('Sorry, but no...');
-		}
+        if ($test === null) {
+            throw new RuntimeException('Sorry, but no...');
+        }
 
-		assertType('object', $test);
+        assertType('object', $test);
 
-		$test->doSomething();
-		$test->doSomethingElse();
-	}
+        $test->doSomething();
+        $test->doSomethingElse();
+    }
 
-	public function findOneByDynamicType(): void
-	{
-		$test = $this->repository->findOneBy(['blah' => 'testing']);
+    public function findOneByDynamicType(): void
+    {
+        $test = $this->repository->findOneBy(['blah' => 'testing']);
 
-		if ($test === null) {
-			throw new RuntimeException('Sorry, but no...');
-		}
+        if ($test === null) {
+            throw new RuntimeException('Sorry, but no...');
+        }
 
-		assertType('object', $test);
+        assertType('object', $test);
 
-		$test->doSomething();
-		$test->doSomethingElse();
-	}
+        $test->doSomething();
+        $test->doSomethingElse();
+    }
 
-	public function findAllDynamicType(): void
-	{
-		$items = $this->repository->findAll();
-		assertType('array<int, object>', $items);
+    public function findAllDynamicType(): void
+    {
+        $items = $this->repository->findAll();
+        assertType('array<int, object>', $items);
 
-		foreach ($items as $test) {
-			$test->doSomething();
-			$test->doSomethingElse();
-		}
-	}
+        foreach ($items as $test) {
+            $test->doSomething();
+            $test->doSomethingElse();
+        }
+    }
 
-	public function findByDynamicType(): void
-	{
-		$items = $this->repository->findBy(['blah' => 'testing']);
-		assertType('array<int, object>', $items);
+    public function findByDynamicType(): void
+    {
+        $items = $this->repository->findBy(['blah' => 'testing']);
+        assertType('array<int, object>', $items);
 
-		foreach ($items as $test) {
-			$test->doSomething();
-			$test->doSomethingElse();
-		}
-	}
+        foreach ($items as $test) {
+            $test->doSomething();
+            $test->doSomethingElse();
+        }
+    }
 }
 
 class Example2
 {
-	/**
-	 * @var DocumentRepository<MyDocument>
-	 */
-	private $repository;
+    /**
+     * @var DocumentRepository<MyDocument>
+     */
+    private $repository;
 
-	public function __construct(DocumentManager $documentManager)
-	{
-		$this->repository = $documentManager->getRepository(MyDocument::class);
-	}
+    public function __construct(DocumentManager $documentManager)
+    {
+        $this->repository = $documentManager->getRepository(MyDocument::class);
+    }
 
-	public function findDynamicType(): void
-	{
-		$test = $this->repository->find(1);
+    public function findDynamicType(): void
+    {
+        $test = $this->repository->find(1);
 
-		if ($test === null) {
-			throw new RuntimeException('Sorry, but no...');
-		}
+        if ($test === null) {
+            throw new RuntimeException('Sorry, but no...');
+        }
 
-		assertType(MyDocument::class, $test);
+        assertType(MyDocument::class, $test);
 
-		$test->doSomething();
-		$test->doSomethingElse();
-	}
+        $test->doSomething();
+        $test->doSomethingElse();
+    }
 
-	public function findOneByDynamicType(): void
-	{
-		$test = $this->repository->findOneBy(['blah' => 'testing']);
+    public function findOneByDynamicType(): void
+    {
+        $test = $this->repository->findOneBy(['blah' => 'testing']);
 
-		if ($test === null) {
-			throw new RuntimeException('Sorry, but no...');
-		}
+        if ($test === null) {
+            throw new RuntimeException('Sorry, but no...');
+        }
 
-		assertType(MyDocument::class, $test);
+        assertType(MyDocument::class, $test);
 
-		$test->doSomething();
-		$test->doSomethingElse();
-	}
+        $test->doSomething();
+        $test->doSomethingElse();
+    }
 
-	public function findAllDynamicType(): void
-	{
-		$items = $this->repository->findAll();
-		assertType('array<int, ' . MyDocument::class . '>', $items);
+    public function findAllDynamicType(): void
+    {
+        $items = $this->repository->findAll();
+        assertType('array<int, ' . MyDocument::class . '>', $items);
 
-		foreach ($items as $test) {
-			$test->doSomething();
-			$test->doSomethingElse();
-		}
-	}
+        foreach ($items as $test) {
+            $test->doSomething();
+            $test->doSomethingElse();
+        }
+    }
 
-	public function findByDynamicType(): void
-	{
-		$items = $this->repository->findBy(['blah' => 'testing']);
-		assertType('array<int, ' . MyDocument::class . '>', $items);
+    public function findByDynamicType(): void
+    {
+        $items = $this->repository->findBy(['blah' => 'testing']);
+        assertType('array<int, ' . MyDocument::class . '>', $items);
 
-		foreach ($items as $test) {
-			$test->doSomething();
-			$test->doSomethingElse();
-		}
-	}
+        foreach ($items as $test) {
+            $test->doSomething();
+            $test->doSomethingElse();
+        }
+    }
 }
 
 /**
@@ -140,14 +144,14 @@ class Example2
  */
 class MyDocument
 {
-	/**
-	 * @Id(strategy="NONE", type="string")
-	 *
-	 * @var string
-	 */
-	private $id;
+    /**
+     * @Id(strategy="NONE", type="string")
+     *
+     * @var string
+     */
+    private $id;
 
-	public function doSomething(): void
-	{
-	}
+    public function doSomething(): void
+    {
+    }
 }

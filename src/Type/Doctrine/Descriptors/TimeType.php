@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Type\Doctrine\Descriptors;
 
@@ -10,25 +12,24 @@ use PHPStan\Type\Type;
 
 class TimeType implements DoctrineTypeDescriptor
 {
+    public function getType(): string
+    {
+        return \Doctrine\DBAL\Types\TimeType::class;
+    }
 
-	public function getType(): string
-	{
-		return \Doctrine\DBAL\Types\TimeType::class;
-	}
+    public function getWritableToPropertyType(): Type
+    {
+        return new ObjectType(DateTime::class);
+    }
 
-	public function getWritableToPropertyType(): Type
-	{
-		return new ObjectType(DateTime::class);
-	}
+    public function getWritableToDatabaseType(): Type
+    {
+        return new ObjectType(DateTimeInterface::class);
+    }
 
-	public function getWritableToDatabaseType(): Type
-	{
-		return new ObjectType(DateTimeInterface::class);
-	}
-
-	public function getDatabaseInternalType(): Type
-	{
-		return new StringType();
-	}
+    public function getDatabaseInternalType(): Type
+    {
+        return new StringType();
+    }
 
 }

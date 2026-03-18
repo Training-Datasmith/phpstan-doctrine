@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Rules\Doctrine\ORM;
 
@@ -9,13 +11,13 @@ use Doctrine\ORM\Mapping as ORM;
  */
 final class FinalEntity
 {
-	/**
-	 * @ORM\Id()
-	 * @ORM\GeneratedValue()
-	 * @ORM\Column(type="integer")
-	 *
-	 * @var int
-	 */
-	private $id;
+    /**
+     * @ORM\Id()
+     * @ORM\GeneratedValue()
+     * @ORM\Column(type="integer")
+     *
+     * @var int
+     */
+    private $id;
 
 }

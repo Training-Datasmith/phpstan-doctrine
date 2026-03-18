@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Type\Doctrine;
 
@@ -6,19 +8,18 @@ use PHPStan\DependencyInjection\Container;
 
 class DescriptorRegistryFactory
 {
+    public const TYPE_DESCRIPTOR_TAG = 'phpstan.doctrine.typeDescriptor';
 
-	public const TYPE_DESCRIPTOR_TAG = 'phpstan.doctrine.typeDescriptor';
+    private Container $container;
 
-	private Container $container;
+    public function __construct(Container $container)
+    {
+        $this->container = $container;
+    }
 
-	public function __construct(Container $container)
-	{
-		$this->container = $container;
-	}
-
-	public function createRegistry(): DescriptorRegistry
-	{
-		return new DefaultDescriptorRegistry($this->container->getServicesByTag(self::TYPE_DESCRIPTOR_TAG));
-	}
+    public function createRegistry(): DescriptorRegistry
+    {
+        return new DefaultDescriptorRegistry($this->container->getServicesByTag(self::TYPE_DESCRIPTOR_TAG));
+    }
 
 }

@@ -1,6 +1,13 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Type\Doctrine\QueryBuilder\Expr;
+
+use function get_class;
+use function in_array;
+use function is_object;
+use function method_exists;
 
 use PhpParser\Node\Expr\MethodCall;
 use PHPStan\Analyser\Scope;
@@ -10,63 +17,57 @@ use PHPStan\Type\Doctrine\ArgumentsProcessor;
 use PHPStan\Type\DynamicMethodReturnTypeExtension;
 use PHPStan\Type\Type;
 use Throwable;
-use function get_class;
-use function in_array;
-use function is_object;
-use function method_exists;
 
 class BaseExpressionDynamicReturnTypeExtension implements DynamicMethodReturnTypeExtension
 {
+    private ArgumentsProcessor $argumentsProcessor;
 
-	private ArgumentsProcessor $argumentsProcessor;
+    public function __construct(
+        ArgumentsProcessor $argumentsProcessor
+    ) {
+        $this->argumentsProcessor = $argumentsProcessor;
+    }
 
-	public function __construct(
-		ArgumentsProcessor $argumentsProcessor
-	)
-	{
-		$this->argumentsProcessor = $argumentsProcessor;
-	}
+    public function getClass(): string
+    {
+        return 'Doctrine\ORM\Query\Expr\Base';
+    }
 
-	public function getClass(): string
-	{
-		return 'Doctrine\ORM\Query\Expr\Base';
-	}
+    public function isMethodSupported(MethodReflection $methodReflection): bool
+    {
+        return in_array($methodReflection->getName(), ['add', 'addMultiple'], true);
+    }
 
-	public function isMethodSupported(MethodReflection $methodReflection): bool
-	{
-		return in_array($methodReflection->getName(), ['add', 'addMultiple'], true);
-	}
+    public function getTypeFromMethodCall(MethodReflection $methodReflection, MethodCall $methodCall, Scope $scope): ?Type
+    {
+        try {
+            $args = $this->argumentsProcessor->processArgs($scope, $methodReflection->getName(), $methodCall->getArgs());
+        } catch (DynamicQueryBuilderArgumentException $e) {
+            return null;
+        }
 
-	public function getTypeFromMethodCall(MethodReflection $methodReflection, MethodCall $methodCall, Scope $scope): ?Type
-	{
-		try {
-			$args = $this->argumentsProcessor->processArgs($scope, $methodReflection->getName(), $methodCall->getArgs());
-		} catch (DynamicQueryBuilderArgumentException $e) {
-			return null;
-		}
+        $calledOnType = $scope->getType($methodCall->var);
+        if (!$calledOnType instanceof ExprType) {
+            return null;
+        }
 
-		$calledOnType = $scope->getType($methodCall->var);
-		if (!$calledOnType instanceof ExprType) {
-			return null;
-		}
+        $expr = $calledOnType->getExprObject();
 
-		$expr = $calledOnType->getExprObject();
+        if (!method_exists($expr, $methodReflection->getName())) {
+            return null;
+        }
 
-		if (!method_exists($expr, $methodReflection->getName())) {
-			return null;
-		}
+        try {
+            $exprValue = $expr->{$methodReflection->getName()}(...$args);
+        } catch (Throwable $e) {
+            return null;
+        }
 
-		try {
-			$exprValue = $expr->{$methodReflection->getName()}(...$args);
-		} catch (Throwable $e) {
-			return null;
-		}
+        if (is_object($exprValue)) {
+            return new ExprType(get_class($exprValue), $exprValue);
+        }
 
-		if (is_object($exprValue)) {
-			return new ExprType(get_class($exprValue), $exprValue);
-		}
-
-		return $scope->getTypeFromValue($exprValue);
-	}
+        return $scope->getTypeFromValue($exprValue);
+    }
 
 }

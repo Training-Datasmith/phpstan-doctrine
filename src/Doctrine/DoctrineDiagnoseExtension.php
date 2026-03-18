@@ -1,81 +1,84 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Doctrine;
 
 use Composer\InstalledVersions;
+
+use function count;
+
 use Doctrine\ORM\EntityManagerInterface;
 use OutOfBoundsException;
 use PHPStan\Command\Output;
 use PHPStan\Diagnose\DiagnoseExtension;
 use PHPStan\Doctrine\Driver\DriverDetector;
 use PHPStan\Type\Doctrine\ObjectMetadataResolver;
-use function count;
+
 use function sprintf;
 
 class DoctrineDiagnoseExtension implements DiagnoseExtension
 {
+    private ObjectMetadataResolver $objectMetadataResolver;
 
-	private ObjectMetadataResolver $objectMetadataResolver;
+    private DriverDetector $driverDetector;
 
-	private DriverDetector $driverDetector;
+    public function __construct(
+        ObjectMetadataResolver $objectMetadataResolver,
+        DriverDetector $driverDetector
+    ) {
+        $this->objectMetadataResolver = $objectMetadataResolver;
+        $this->driverDetector = $driverDetector;
+    }
 
-	public function __construct(
-		ObjectMetadataResolver $objectMetadataResolver,
-		DriverDetector $driverDetector
-	)
-	{
-		$this->objectMetadataResolver = $objectMetadataResolver;
-		$this->driverDetector = $driverDetector;
-	}
+    public function print(Output $output): void
+    {
+        $output->writeLineFormatted(sprintf(
+            '<info>Doctrine\'s objectManagerLoader:</info> %s',
+            $this->objectMetadataResolver->hasObjectManagerLoader() ? 'In use' : 'No',
+        ));
 
-	public function print(Output $output): void
-	{
-		$output->writeLineFormatted(sprintf(
-			'<info>Doctrine\'s objectManagerLoader:</info> %s',
-			$this->objectMetadataResolver->hasObjectManagerLoader() ? 'In use' : 'No',
-		));
+        $objectManager = $this->objectMetadataResolver->getObjectManager();
+        if ($objectManager instanceof EntityManagerInterface) {
+            $connection = $objectManager->getConnection();
+            $driver = $this->driverDetector->detect($connection);
 
-		$objectManager = $this->objectMetadataResolver->getObjectManager();
-		if ($objectManager instanceof EntityManagerInterface) {
-			$connection = $objectManager->getConnection();
-			$driver = $this->driverDetector->detect($connection);
+            $output->writeLineFormatted(sprintf(
+                '<info>Detected driver:</info> %s',
+                $driver ?? 'None',
+            ));
+        }
 
-			$output->writeLineFormatted(sprintf(
-				'<info>Detected driver:</info> %s',
-				$driver ?? 'None',
-			));
-		}
+        $packages = [];
+        $candidates = [
+            'doctrine/dbal',
+            'doctrine/orm',
+            'doctrine/common',
+            'doctrine/collections',
+            'doctrine/persistence',
+        ];
+        foreach ($candidates as $package) {
+            try {
+                $installedVersion = InstalledVersions::getPrettyVersion($package);
+            } catch (OutOfBoundsException $e) {
+                continue;
+            }
 
-		$packages = [];
-		$candidates = [
-			'doctrine/dbal',
-			'doctrine/orm',
-			'doctrine/common',
-			'doctrine/collections',
-			'doctrine/persistence',
-		];
-		foreach ($candidates as $package) {
-			try {
-				$installedVersion = InstalledVersions::getPrettyVersion($package);
-			} catch (OutOfBoundsException $e) {
-				continue;
-			}
+            if ($installedVersion === null) {
+                continue;
+            }
 
-			if ($installedVersion === null) {
-				continue;
-			}
+            $packages[$package] = $installedVersion;
+        }
 
-			$packages[$package] = $installedVersion;
-		}
+        if (count($packages) > 0) {
+            $output->writeLineFormatted('<info>Installed Doctrine packages:</info>');
+            foreach ($packages as $package => $version) {
+                $output->writeLineFormatted(sprintf('%s: %s', $package, $version));
+            }
+        }
 
-		if (count($packages) > 0) {
-			$output->writeLineFormatted('<info>Installed Doctrine packages:</info>');
-			foreach ($packages as $package => $version) {
-				$output->writeLineFormatted(sprintf('%s: %s', $package, $version));
-			}
-		}
-
-		$output->writeLineFormatted('');
-	}
+        $output->writeLineFormatted('');
+    }
 
 }

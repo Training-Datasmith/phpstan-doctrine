@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Type\Doctrine\DBAL\QueryBuilder;
 
@@ -18,58 +20,57 @@ use PHPStan\Type\TypeCombinator;
 
 class QueryBuilderExecuteMethodExtension implements DynamicMethodReturnTypeExtension
 {
+    private ReflectionProvider $reflectionProvider;
 
-	private ReflectionProvider $reflectionProvider;
+    public function __construct(ReflectionProvider $reflectionProvider)
+    {
+        $this->reflectionProvider = $reflectionProvider;
+    }
 
-	public function __construct(ReflectionProvider $reflectionProvider)
-	{
-		$this->reflectionProvider = $reflectionProvider;
-	}
+    public function getClass(): string
+    {
+        return QueryBuilder::class;
+    }
 
-	public function getClass(): string
-	{
-		return QueryBuilder::class;
-	}
+    public function isMethodSupported(MethodReflection $methodReflection): bool
+    {
+        return $methodReflection->getName() === 'execute';
+    }
 
-	public function isMethodSupported(MethodReflection $methodReflection): bool
-	{
-		return $methodReflection->getName() === 'execute';
-	}
+    public function getTypeFromMethodCall(MethodReflection $methodReflection, MethodCall $methodCall, Scope $scope): Type
+    {
+        $defaultReturnType = ParametersAcceptorSelector::selectFromArgs(
+            $scope,
+            $methodCall->getArgs(),
+            $methodReflection->getVariants(),
+        )->getReturnType();
 
-	public function getTypeFromMethodCall(MethodReflection $methodReflection, MethodCall $methodCall, Scope $scope): Type
-	{
-		$defaultReturnType = ParametersAcceptorSelector::selectFromArgs(
-			$scope,
-			$methodCall->getArgs(),
-			$methodReflection->getVariants(),
-		)->getReturnType();
+        $queryBuilderType = new ObjectType(QueryBuilder::class);
+        $var = $methodCall->var;
+        while ($var instanceof MethodCall) {
+            $varType = $scope->getType($var->var);
+            if (!$queryBuilderType->isSuperTypeOf($varType)->yes()) {
+                return $defaultReturnType;
+            }
 
-		$queryBuilderType = new ObjectType(QueryBuilder::class);
-		$var = $methodCall->var;
-		while ($var instanceof MethodCall) {
-			$varType = $scope->getType($var->var);
-			if (!$queryBuilderType->isSuperTypeOf($varType)->yes()) {
-				return $defaultReturnType;
-			}
+            $nameObject = $var->name;
+            if (!($nameObject instanceof Identifier)) {
+                return $defaultReturnType;
+            }
 
-			$nameObject = $var->name;
-			if (!($nameObject instanceof Identifier)) {
-				return $defaultReturnType;
-			}
+            $name = $nameObject->toString();
+            if ($name === 'select' || $name === 'addSelect') {
+                if ($this->reflectionProvider->hasClass(ResultStatement::class)) {
+                    return TypeCombinator::intersect($defaultReturnType, new ObjectType(ResultStatement::class));
+                }
 
-			$name = $nameObject->toString();
-			if ($name === 'select' || $name === 'addSelect') {
-				if ($this->reflectionProvider->hasClass(ResultStatement::class)) {
-					return TypeCombinator::intersect($defaultReturnType, new ObjectType(ResultStatement::class));
-				}
+                return TypeCombinator::intersect($defaultReturnType, new ObjectType(Result::class));
+            }
 
-				return TypeCombinator::intersect($defaultReturnType, new ObjectType(Result::class));
-			}
+            $var = $var->var;
+        }
 
-			$var = $var->var;
-		}
-
-		return $defaultReturnType;
-	}
+        return $defaultReturnType;
+    }
 
 }

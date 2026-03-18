@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Rules\Doctrine\ORM;
 
@@ -9,9 +11,11 @@ use Doctrine\ORM\Mapping as ORM;
  */
 class EntityNonFinalConstructor
 {
-	public function __construct()
-	{}
+    public function __construct()
+    {
+    }
 
-	final public function foo()
-	{}
+    final public function foo()
+    {
+    }
 }

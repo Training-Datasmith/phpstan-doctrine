@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Doctrine\Mapping;
 
@@ -9,66 +11,65 @@ use Doctrine\Persistence\Mapping\Driver\MappingDriver;
 
 class MappingDriverChain implements MappingDriver
 {
+    /** @var MappingDriver[] */
+    private array $drivers;
 
-	/** @var MappingDriver[] */
-	private array $drivers;
+    /**
+     * @param MappingDriver[] $drivers
+     */
+    public function __construct(array $drivers)
+    {
+        $this->drivers = $drivers;
+    }
 
-	/**
-	 * @param MappingDriver[] $drivers
-	 */
-	public function __construct(array $drivers)
-	{
-		$this->drivers = $drivers;
-	}
+    /**
+     * @param class-string $className
+     */
+    public function loadMetadataForClass($className, ClassMetadata $metadata): void
+    {
+        foreach ($this->drivers as $driver) {
+            try {
+                $driver->loadMetadataForClass($className, $metadata);
+                return;
+            } catch (\Doctrine\Persistence\Mapping\MappingException | MappingException | AnnotationException $e) {
+                // pass
+            }
+        }
+    }
 
-	/**
-	 * @param class-string $className
-	 */
-	public function loadMetadataForClass($className, ClassMetadata $metadata): void
-	{
-		foreach ($this->drivers as $driver) {
-			try {
-				$driver->loadMetadataForClass($className, $metadata);
-				return;
-			} catch (\Doctrine\Persistence\Mapping\MappingException | MappingException | AnnotationException $e) {
-				// pass
-			}
-		}
-	}
-
-	/**
+    /**
      * @return mixed[]
      */
     public function getAllClassNames(): array
-	{
-		$all = [];
-		foreach ($this->drivers as $driver) {
-			foreach ($driver->getAllClassNames() as $className) {
-				$all[] = $className;
-			}
-		}
+    {
+        $all = [];
+        foreach ($this->drivers as $driver) {
+            foreach ($driver->getAllClassNames() as $className) {
+                $all[] = $className;
+            }
+        }
 
-		return $all;
-	}
+        return $all;
+    }
 
-	/**
-	 * @param class-string $className
-	 */
-	public function isTransient($className): bool
-	{
-		foreach ($this->drivers as $driver) {
-			try {
-				if ($driver->isTransient($className)) {
-					continue;
-				}
+    /**
+     * @param class-string $className
+     */
+    public function isTransient($className): bool
+    {
+        foreach ($this->drivers as $driver) {
+            try {
+                if ($driver->isTransient($className)) {
+                    continue;
+                }
 
-				return false;
-			} catch (\Doctrine\Persistence\Mapping\MappingException | MappingException | AnnotationException $e) {
-				// pass
-			}
-		}
+                return false;
+            } catch (\Doctrine\Persistence\Mapping\MappingException | MappingException | AnnotationException $e) {
+                // pass
+            }
+        }
 
-		return true;
-	}
+        return true;
+    }
 
 }

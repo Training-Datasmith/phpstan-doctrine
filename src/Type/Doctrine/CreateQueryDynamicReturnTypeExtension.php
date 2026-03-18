@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Type\Doctrine;
 
@@ -32,84 +34,81 @@ use PHPStan\Type\UnionType;
  */
 final class CreateQueryDynamicReturnTypeExtension implements DynamicMethodReturnTypeExtension
 {
+    private ObjectMetadataResolver $objectMetadataResolver;
 
-	private ObjectMetadataResolver $objectMetadataResolver;
+    private DescriptorRegistry $descriptorRegistry;
 
-	private DescriptorRegistry $descriptorRegistry;
+    private PhpVersion $phpVersion;
 
-	private PhpVersion $phpVersion;
+    private DriverDetector $driverDetector;
 
-	private DriverDetector $driverDetector;
+    public function __construct(
+        ObjectMetadataResolver $objectMetadataResolver,
+        DescriptorRegistry $descriptorRegistry,
+        PhpVersion $phpVersion,
+        DriverDetector $driverDetector
+    ) {
+        $this->objectMetadataResolver = $objectMetadataResolver;
+        $this->descriptorRegistry = $descriptorRegistry;
+        $this->phpVersion = $phpVersion;
+        $this->driverDetector = $driverDetector;
+    }
 
-	public function __construct(
-		ObjectMetadataResolver $objectMetadataResolver,
-		DescriptorRegistry $descriptorRegistry,
-		PhpVersion $phpVersion,
-		DriverDetector $driverDetector
-	)
-	{
-		$this->objectMetadataResolver = $objectMetadataResolver;
-		$this->descriptorRegistry = $descriptorRegistry;
-		$this->phpVersion = $phpVersion;
-		$this->driverDetector = $driverDetector;
-	}
+    public function getClass(): string
+    {
+        return EntityManagerInterface::class;
+    }
 
-	public function getClass(): string
-	{
-		return EntityManagerInterface::class;
-	}
+    public function isMethodSupported(MethodReflection $methodReflection): bool
+    {
+        return $methodReflection->getName() === 'createQuery';
+    }
 
-	public function isMethodSupported(MethodReflection $methodReflection): bool
-	{
-		return $methodReflection->getName() === 'createQuery';
-	}
+    public function getTypeFromMethodCall(
+        MethodReflection $methodReflection,
+        MethodCall $methodCall,
+        Scope $scope
+    ): Type {
+        $queryStringArgIndex = 0;
+        $args = $methodCall->getArgs();
 
-	public function getTypeFromMethodCall(
-		MethodReflection $methodReflection,
-		MethodCall $methodCall,
-		Scope $scope
-	): Type
-	{
-		$queryStringArgIndex = 0;
-		$args = $methodCall->getArgs();
+        if (!isset($args[$queryStringArgIndex])) {
+            return new GenericObjectType(
+                Query::class,
+                [new MixedType(), new MixedType()],
+            );
+        }
 
-		if (!isset($args[$queryStringArgIndex])) {
-			return new GenericObjectType(
-				Query::class,
-				[new MixedType(), new MixedType()],
-			);
-		}
+        $argType = $scope->getType($args[$queryStringArgIndex]->value);
 
-		$argType = $scope->getType($args[$queryStringArgIndex]->value);
+        return TypeTraverser::map($argType, function (Type $type, callable $traverse): Type {
+            if ($type instanceof UnionType || $type instanceof IntersectionType) {
+                return $traverse($type);
+            }
+            if ($type instanceof ConstantStringType) {
+                $queryString = $type->getValue();
 
-		return TypeTraverser::map($argType, function (Type $type, callable $traverse): Type {
-			if ($type instanceof UnionType || $type instanceof IntersectionType) {
-				return $traverse($type);
-			}
-			if ($type instanceof ConstantStringType) {
-				$queryString = $type->getValue();
+                $em = $this->objectMetadataResolver->getObjectManager();
+                if (!$em instanceof EntityManagerInterface) {
+                    return new QueryType($queryString);
+                }
 
-				$em = $this->objectMetadataResolver->getObjectManager();
-				if (!$em instanceof EntityManagerInterface) {
-					return new QueryType($queryString);
-				}
+                $typeBuilder = new QueryResultTypeBuilder();
 
-				$typeBuilder = new QueryResultTypeBuilder();
+                try {
+                    $query = $em->createQuery($queryString);
+                    QueryResultTypeWalker::walk($query, $typeBuilder, $this->descriptorRegistry, $this->phpVersion, $this->driverDetector);
+                } catch (ORMException|DBALException|NewDBALException|CommonException|MappingException|\Doctrine\ORM\Exception\ORMException|AssertionError $e) {
+                    return new QueryType($queryString);
+                }
 
-				try {
-					$query = $em->createQuery($queryString);
-					QueryResultTypeWalker::walk($query, $typeBuilder, $this->descriptorRegistry, $this->phpVersion, $this->driverDetector);
-				} catch (ORMException|DBALException|NewDBALException|CommonException|MappingException|\Doctrine\ORM\Exception\ORMException|AssertionError $e) {
-					return new QueryType($queryString);
-				}
-
-				return new QueryType($queryString, $typeBuilder->getIndexType(), $typeBuilder->getResultType());
-			}
-			return new GenericObjectType(
-				Query::class,
-				[new MixedType(), new MixedType()],
-			);
-		});
-	}
+                return new QueryType($queryString, $typeBuilder->getIndexType(), $typeBuilder->getResultType());
+            }
+            return new GenericObjectType(
+                Query::class,
+                [new MixedType(), new MixedType()],
+            );
+        });
+    }
 
 }

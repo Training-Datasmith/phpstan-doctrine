@@ -1,33 +1,33 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace Bug219;
 
 use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\EntityRepository;
 
 use function PHPStan\Testing\assertType;
 
 class Test
 {
+    /** @var EntityManagerInterface */
+    private $entityManager;
 
-	/** @var EntityManagerInterface */
-	private $entityManager;
+    public function __construct(EntityManagerInterface $entityManager)
+    {
+        $this->entityManager = $entityManager;
+    }
 
-	public function __construct(EntityManagerInterface $entityManager)
-	{
-		$this->entityManager = $entityManager;
-	}
+    public function getEntityManager(): EntityManagerInterface
+    {
+        return $this->entityManager;
+    }
 
-	public function getEntityManager(): EntityManagerInterface
-	{
-		return $this->entityManager;
-	}
+    public function update(): void
+    {
+        $this->getEntityManager()->getRepository(\stdClass::class)->createQueryBuilder('t')->update();
 
-	public function update(): void
-	{
-		$this->getEntityManager()->getRepository(\stdClass::class)->createQueryBuilder('t')->update();
-
-		assertType('$this(Bug219\Test)', $this);
-	}
+        assertType('$this(Bug219\Test)', $this);
+    }
 
 }

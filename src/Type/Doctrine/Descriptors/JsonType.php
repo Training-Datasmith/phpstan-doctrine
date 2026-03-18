@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Type\Doctrine\Descriptors;
 
@@ -18,41 +20,40 @@ use stdClass;
 
 class JsonType implements DoctrineTypeDescriptor
 {
+    private static function getJsonType(): UnionType
+    {
+        $mixedType = new MixedType();
 
-	private static function getJsonType(): UnionType
-	{
-		$mixedType = new MixedType();
+        return new UnionType([
+            new ArrayType($mixedType, $mixedType),
+            new BooleanType(),
+            new FloatType(),
+            new IntegerType(),
+            new NullType(),
+            new ObjectType(JsonSerializable::class),
+            new ObjectType(stdClass::class),
+            new StringType(),
+        ]);
+    }
 
-		return new UnionType([
-			new ArrayType($mixedType, $mixedType),
-			new BooleanType(),
-			new FloatType(),
-			new IntegerType(),
-			new NullType(),
-			new ObjectType(JsonSerializable::class),
-			new ObjectType(stdClass::class),
-			new StringType(),
-		]);
-	}
+    public function getType(): string
+    {
+        return \Doctrine\DBAL\Types\JsonType::class;
+    }
 
-	public function getType(): string
-	{
-		return \Doctrine\DBAL\Types\JsonType::class;
-	}
+    public function getWritableToPropertyType(): Type
+    {
+        return new NeverType();
+    }
 
-	public function getWritableToPropertyType(): Type
-	{
-		return new NeverType();
-	}
+    public function getWritableToDatabaseType(): Type
+    {
+        return self::getJsonType();
+    }
 
-	public function getWritableToDatabaseType(): Type
-	{
-		return self::getJsonType();
-	}
-
-	public function getDatabaseInternalType(): Type
-	{
-		return new StringType();
-	}
+    public function getDatabaseInternalType(): Type
+    {
+        return new StringType();
+    }
 
 }

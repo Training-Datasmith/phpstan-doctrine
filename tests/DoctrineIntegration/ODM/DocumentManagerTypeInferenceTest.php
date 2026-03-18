@@ -1,46 +1,48 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\DoctrineIntegration\ODM;
 
-use PHPStan\Testing\TypeInferenceTestCase;
 use function extension_loaded;
+
 use const PHP_VERSION_ID;
+
+use PHPStan\Testing\TypeInferenceTestCase;
 
 final class DocumentManagerTypeInferenceTest extends TypeInferenceTestCase
 {
+    public function dataFileAsserts(): iterable
+    {
+        if (!extension_loaded('mongodb')) {
+            self::markTestSkipped('MongoDB extension is not installed.');
+        }
 
-	public function dataFileAsserts(): iterable
-	{
-		if (!extension_loaded('mongodb')) {
-			self::markTestSkipped('MongoDB extension is not installed.');
-		}
+        yield from $this->gatherAssertTypes(__DIR__ . '/data/documentManagerDynamicReturn.php');
+        yield from $this->gatherAssertTypes(__DIR__ . '/data/documentRepositoryDynamicReturn.php');
+        yield from $this->gatherAssertTypes(__DIR__ . '/data/documentManagerMergeReturn.php');
+        yield from $this->gatherAssertTypes(__DIR__ . '/data/customRepositoryUsage.php');
+    }
 
-		yield from $this->gatherAssertTypes(__DIR__ . '/data/documentManagerDynamicReturn.php');
-		yield from $this->gatherAssertTypes(__DIR__ . '/data/documentRepositoryDynamicReturn.php');
-		yield from $this->gatherAssertTypes(__DIR__ . '/data/documentManagerMergeReturn.php');
-		yield from $this->gatherAssertTypes(__DIR__ . '/data/customRepositoryUsage.php');
-	}
+    /**
+     * @dataProvider dataFileAsserts
+     * @param mixed ...$args
+     */
+    public function testFileAsserts(
+        string $assertType,
+        string $file,
+        ...$args
+    ): void {
+        if (PHP_VERSION_ID >= 80000) {
+            self::markTestSkipped('Test requires PHP 7.');
+        }
 
-	/**
-	 * @dataProvider dataFileAsserts
-	 * @param mixed ...$args
-	 */
-	public function testFileAsserts(
-		string $assertType,
-		string $file,
-		...$args
-	): void
-	{
-		if (PHP_VERSION_ID >= 80000) {
-			self::markTestSkipped('Test requires PHP 7.');
-		}
+        $this->assertFileAsserts($assertType, $file, ...$args);
+    }
 
-		$this->assertFileAsserts($assertType, $file, ...$args);
-	}
-
-	public static function getAdditionalConfigFiles(): array
-	{
-		return [__DIR__ . '/phpstan.neon'];
-	}
+    public static function getAdditionalConfigFiles(): array
+    {
+        return [__DIR__ . '/phpstan.neon'];
+    }
 
 }

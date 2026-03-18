@@ -1,9 +1,15 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Rules\Doctrine\ORM;
 
+use function array_values;
+
 use AssertionError;
-use Doctrine\ORM\EntityManagerInterface;
+
+use function count;
+
 use Doctrine\ORM\Query\QueryException;
 use PhpParser\Node;
 use PhpParser\Node\Expr\MethodCall;
@@ -13,120 +19,118 @@ use PHPStan\Rules\RuleErrorBuilder;
 use PHPStan\Type\Doctrine\DoctrineTypeUtils;
 use PHPStan\Type\Doctrine\ObjectMetadataResolver;
 use PHPStan\Type\ObjectType;
-use Throwable;
-use function array_values;
-use function count;
+
 use function sprintf;
 use function strpos;
+
+use Throwable;
 
 /**
  * @implements Rule<Node\Expr\MethodCall>
  */
 class QueryBuilderDqlRule implements Rule
 {
+    private ObjectMetadataResolver $objectMetadataResolver;
 
-	private ObjectMetadataResolver $objectMetadataResolver;
+    private bool $reportDynamicQueryBuilders;
 
-	private bool $reportDynamicQueryBuilders;
+    public function __construct(
+        ObjectMetadataResolver $objectMetadataResolver,
+        bool $reportDynamicQueryBuilders
+    ) {
+        $this->objectMetadataResolver = $objectMetadataResolver;
+        $this->reportDynamicQueryBuilders = $reportDynamicQueryBuilders;
+    }
 
-	public function __construct(
-		ObjectMetadataResolver $objectMetadataResolver,
-		bool $reportDynamicQueryBuilders
-	)
-	{
-		$this->objectMetadataResolver = $objectMetadataResolver;
-		$this->reportDynamicQueryBuilders = $reportDynamicQueryBuilders;
-	}
+    public function getNodeType(): string
+    {
+        return Node\Expr\MethodCall::class;
+    }
 
-	public function getNodeType(): string
-	{
-		return Node\Expr\MethodCall::class;
-	}
+    public function processNode(Node $node, Scope $scope): array
+    {
+        if (!$node->name instanceof Node\Identifier) {
+            return [];
+        }
 
-	public function processNode(Node $node, Scope $scope): array
-	{
-		if (!$node->name instanceof Node\Identifier) {
-			return [];
-		}
+        if ($node->name->toLowerString() !== 'getquery') {
+            return [];
+        }
 
-		if ($node->name->toLowerString() !== 'getquery') {
-			return [];
-		}
+        $calledOnType = $scope->getType($node->var);
+        $queryBuilderTypes = DoctrineTypeUtils::getQueryBuilderTypes($calledOnType);
+        if (count($queryBuilderTypes) === 0) {
+            if (
+                $this->reportDynamicQueryBuilders
+                && (new ObjectType('Doctrine\ORM\QueryBuilder'))->isSuperTypeOf($calledOnType)->yes()
+            ) {
+                return [
+                    RuleErrorBuilder::message('Could not analyse QueryBuilder with unknown beginning.')
+                        ->identifier('doctrine.queryBuilderDynamic')
+                        ->build(),
+                ];
+            }
+            return [];
+        }
 
-		$calledOnType = $scope->getType($node->var);
-		$queryBuilderTypes = DoctrineTypeUtils::getQueryBuilderTypes($calledOnType);
-		if (count($queryBuilderTypes) === 0) {
-			if (
-				$this->reportDynamicQueryBuilders
-				&& (new ObjectType('Doctrine\ORM\QueryBuilder'))->isSuperTypeOf($calledOnType)->yes()
-			) {
-				return [
-					RuleErrorBuilder::message('Could not analyse QueryBuilder with unknown beginning.')
-						->identifier('doctrine.queryBuilderDynamic')
-						->build(),
-				];
-			}
-			return [];
-		}
+        try {
+            $dqlType = $scope->getType(new MethodCall($node, new Node\Identifier('getDQL'), []));
+        } catch (Throwable $e) {
+            return [
+                RuleErrorBuilder::message(sprintf('Internal error: %s', $e->getMessage()))
+                    ->nonIgnorable()
+                    ->identifier('doctrine.internalError')
+                    ->build(),
+            ];
+        }
 
-		try {
-			$dqlType = $scope->getType(new MethodCall($node, new Node\Identifier('getDQL'), []));
-		} catch (Throwable $e) {
-			return [
-				RuleErrorBuilder::message(sprintf('Internal error: %s', $e->getMessage()))
-					->nonIgnorable()
-					->identifier('doctrine.internalError')
-					->build(),
-			];
-		}
+        $dqls = $dqlType->getConstantStrings();
+        if (count($dqls) === 0) {
+            if ($this->reportDynamicQueryBuilders) {
+                return [
+                    RuleErrorBuilder::message('Could not analyse QueryBuilder with dynamic arguments.')
+                        ->identifier('doctrine.queryBuilderDynamicArgument')
+                        ->build(),
+                ];
+            }
+            return [];
+        }
 
-		$dqls = $dqlType->getConstantStrings();
-		if (count($dqls) === 0) {
-			if ($this->reportDynamicQueryBuilders) {
-				return [
-					RuleErrorBuilder::message('Could not analyse QueryBuilder with dynamic arguments.')
-						->identifier('doctrine.queryBuilderDynamicArgument')
-						->build(),
-				];
-			}
-			return [];
-		}
+        $objectManager = $this->objectMetadataResolver->getObjectManager();
+        if ($objectManager === null) {
+            return [];
+        }
 
-		$objectManager = $this->objectMetadataResolver->getObjectManager();
-		if ($objectManager === null) {
-			return [];
-		}
+        $entityManagerInterface = 'Doctrine\ORM\EntityManagerInterface';
+        if (!$objectManager instanceof $entityManagerInterface) {
+            return [];
+        }
 
-		$entityManagerInterface = 'Doctrine\ORM\EntityManagerInterface';
-		if (!$objectManager instanceof $entityManagerInterface) {
-			return [];
-		}
+        $messages = [];
+        foreach ($dqls as $dql) {
+            try {
+                $objectManager->createQuery($dql->getValue())->getAST();
+            } catch (QueryException $e) {
+                $message = sprintf('QueryBuilder: %s', $e->getMessage());
+                if (strpos($e->getMessage(), '[Syntax Error]') === 0) {
+                    $message .= sprintf("\nDQL: %s", $dql->getValue());
+                }
 
-		$messages = [];
-		foreach ($dqls as $dql) {
-			try {
-				$objectManager->createQuery($dql->getValue())->getAST();
-			} catch (QueryException $e) {
-				$message = sprintf('QueryBuilder: %s', $e->getMessage());
-				if (strpos($e->getMessage(), '[Syntax Error]') === 0) {
-					$message .= sprintf("\nDQL: %s", $dql->getValue());
-				}
+                $builder = RuleErrorBuilder::message($message)
+                    ->identifier('doctrine.dql');
 
-				$builder = RuleErrorBuilder::message($message)
-					->identifier('doctrine.dql');
+                if (count($dqls) > 1) {
+                    $builder->addTip('Detected from DQL branch: ' . $dql->getValue());
+                }
 
-				if (count($dqls) > 1) {
-					$builder->addTip('Detected from DQL branch: ' . $dql->getValue());
-				}
+                // Use message as index to prevent duplicate
+                $messages[$message] = $builder->build();
+            } catch (AssertionError $e) {
+                continue;
+            }
+        }
 
-				// Use message as index to prevent duplicate
-				$messages[$message] = $builder->build();
-			} catch (AssertionError $e) {
-				continue;
-			}
-		}
-
-		return array_values($messages);
-	}
+        return array_values($messages);
+    }
 
 }

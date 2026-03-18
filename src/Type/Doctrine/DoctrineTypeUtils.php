@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Type\Doctrine;
 
@@ -9,55 +11,54 @@ use PHPStan\Type\UnionType;
 
 class DoctrineTypeUtils
 {
+    /**
+     * @return QueryBuilderType[]
+     */
+    public static function getQueryBuilderTypes(Type $type): array
+    {
+        if ($type instanceof QueryBuilderType) {
+            return [$type];
+        }
 
-	/**
-	 * @return QueryBuilderType[]
-	 */
-	public static function getQueryBuilderTypes(Type $type): array
-	{
-		if ($type instanceof QueryBuilderType) {
-			return [$type];
-		}
+        if ($type instanceof UnionType) {
+            $types = [];
+            foreach ($type->getTypes() as $innerType) {
+                if (!$innerType instanceof QueryBuilderType) {
+                    return [];
+                }
 
-		if ($type instanceof UnionType) {
-			$types = [];
-			foreach ($type->getTypes() as $innerType) {
-				if (!$innerType instanceof QueryBuilderType) {
-					return [];
-				}
+                $types[] = $innerType;
+            }
 
-				$types[] = $innerType;
-			}
+            return $types;
+        }
 
-			return $types;
-		}
+        return [];
+    }
 
-		return [];
-	}
+    /**
+     * @return QueryType[]
+     */
+    public static function getQueryTypes(Type $type): array
+    {
+        if ($type instanceof QueryType) {
+            return [$type];
+        }
 
-	/**
-	 * @return QueryType[]
-	 */
-	public static function getQueryTypes(Type $type): array
-	{
-		if ($type instanceof QueryType) {
-			return [$type];
-		}
+        if ($type instanceof UnionType) {
+            $types = [];
+            foreach ($type->getTypes() as $innerType) {
+                if (!$innerType instanceof QueryType) {
+                    return [];
+                }
 
-		if ($type instanceof UnionType) {
-			$types = [];
-			foreach ($type->getTypes() as $innerType) {
-				if (!$innerType instanceof QueryType) {
-					return [];
-				}
+                $types[] = $innerType;
+            }
 
-				$types[] = $innerType;
-			}
+            return $types;
+        }
 
-			return $types;
-		}
-
-		return [];
-	}
+        return [];
+    }
 
 }

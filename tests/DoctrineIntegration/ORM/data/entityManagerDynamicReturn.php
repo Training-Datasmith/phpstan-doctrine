@@ -1,69 +1,73 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\DoctrineIntegration\ORM\EntityManagerDynamicReturn;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping as ORM;
-use RuntimeException;
+
 use function PHPStan\Testing\assertType;
+
+use RuntimeException;
 
 class Example
 {
-	/**
-	 * @var EntityManagerInterface
-	 */
-	private $entityManager;
+    /**
+     * @var EntityManagerInterface
+     */
+    private $entityManager;
 
-	public function __construct(EntityManagerInterface $entityManager)
-	{
-		$this->entityManager = $entityManager;
-	}
+    public function __construct(EntityManagerInterface $entityManager)
+    {
+        $this->entityManager = $entityManager;
+    }
 
-	public function findDynamicType(): void
-	{
-		$test = $this->entityManager->find(MyEntity::class, 1);
+    public function findDynamicType(): void
+    {
+        $test = $this->entityManager->find(MyEntity::class, 1);
 
-		if ($test === null) {
-			throw new RuntimeException('Sorry, but no...');
-		}
+        if ($test === null) {
+            throw new RuntimeException('Sorry, but no...');
+        }
 
-		$test->doSomething();
-		$test->doSomethingElse();
-	}
+        $test->doSomething();
+        $test->doSomethingElse();
+    }
 
-	public function getReferenceDynamicType(): void
-	{
-		$test = $this->entityManager->getReference(MyEntity::class, 1);
+    public function getReferenceDynamicType(): void
+    {
+        $test = $this->entityManager->getReference(MyEntity::class, 1);
 
-		if ($test === null) {
-			throw new RuntimeException('Sorry, but no...');
-		}
+        if ($test === null) {
+            throw new RuntimeException('Sorry, but no...');
+        }
 
-		assertType(MyEntity::class, $test);
+        assertType(MyEntity::class, $test);
 
-		$test->doSomething();
-		$test->doSomethingElse();
-	}
+        $test->doSomething();
+        $test->doSomethingElse();
+    }
 
-	/**
-	 * @param class-string $entityName
-	 */
-	public function doSomethingWithRepository(string $entityName): void
-	{
-		$repository = $this->entityManager->getRepository($entityName);
-		$repository->getClassName();
-		$repository->unknownMethod();
-		assertType('Doctrine\ORM\EntityRepository<object>', $repository);
-		$entity = $repository->find(1);
+    /**
+     * @param class-string $entityName
+     */
+    public function doSomethingWithRepository(string $entityName): void
+    {
+        $repository = $this->entityManager->getRepository($entityName);
+        $repository->getClassName();
+        $repository->unknownMethod();
+        assertType('Doctrine\ORM\EntityRepository<object>', $repository);
+        $entity = $repository->find(1);
 
-		if ($entity === null) {
-			throw new RuntimeException('Sorry, but no...');
-		}
+        if ($entity === null) {
+            throw new RuntimeException('Sorry, but no...');
+        }
 
-		assertType('object', $entity);
+        assertType('object', $entity);
 
-		$entity->unknownMethod();
-	}
+        $entity->unknownMethod();
+    }
 }
 
 /**
@@ -71,16 +75,16 @@ class Example
  */
 class MyEntity
 {
-	/**
-	 * @ORM\Id()
-	 * @ORM\GeneratedValue()
-	 * @ORM\Column(type="integer")
-	 *
-	 * @var int
-	 */
-	private $id;
+    /**
+     * @ORM\Id()
+     * @ORM\GeneratedValue()
+     * @ORM\Column(type="integer")
+     *
+     * @var int
+     */
+    private $id;
 
-	public function doSomething(): void
-	{
-	}
+    public function doSomething(): void
+    {
+    }
 }

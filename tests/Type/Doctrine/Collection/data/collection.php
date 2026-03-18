@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 use Doctrine\Common\Collections\ArrayCollection;
 
@@ -6,7 +8,6 @@ use function PHPStan\Testing\assertType;
 
 class MyEntity
 {
-
 }
 
 $new = new MyEntity();
@@ -23,35 +24,35 @@ $entityOrFalse2 = $collection->last();
 assertType('MyEntity|false', $entityOrFalse2);
 
 if ($collection->isEmpty()) {
-	$false1 = $collection->first();
-	assertType('false', $false1);
+    $false1 = $collection->first();
+    assertType('false', $false1);
 
-	$false2 = $collection->last();
-	assertType('false', $false2);
+    $false2 = $collection->last();
+    assertType('false', $false2);
 }
 
 if (!$collection->isEmpty()) {
-	$entity1 = $collection->first();
-	assertType('MyEntity', $entity1);
+    $entity1 = $collection->first();
+    assertType('MyEntity', $entity1);
 
-	$entity2 = $collection->last();
-	assertType('MyEntity', $entity2);
+    $entity2 = $collection->last();
+    assertType('MyEntity', $entity2);
 }
 
 if ($collection->isEmpty()) {
-	$collection->add($new);
-	$result1 = $collection->first();
-	assertType('MyEntity|false', $result1);
+    $collection->add($new);
+    $result1 = $collection->first();
+    assertType('MyEntity|false', $result1);
 
-	$result2 = $collection->last();
-	assertType('MyEntity|false', $result2);
+    $result2 = $collection->last();
+    assertType('MyEntity|false', $result2);
 }
 
 if (!$collection->isEmpty()) {
-	$collection->removeElement($new);
-	$result3 = $collection->first();
-	assertType('MyEntity|false', $result3);
+    $collection->removeElement($new);
+    $result3 = $collection->first();
+    assertType('MyEntity|false', $result3);
 
-	$result4 = $collection->last();
-	assertType('MyEntity|false', $result4);
+    $result4 = $collection->last();
+    assertType('MyEntity|false', $result4);
 }

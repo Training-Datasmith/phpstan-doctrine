@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Type\Doctrine\QueryBuilder;
 
@@ -12,42 +14,39 @@ use PHPStan\Type\TypeCombinator;
 
 class QueryBuilderGetDqlDynamicReturnTypeExtension implements DynamicMethodReturnTypeExtension
 {
+    /** @var class-string|null */
+    private ?string $queryBuilderClass = null;
 
-	/** @var class-string|null */
-	private ?string $queryBuilderClass = null;
+    /**
+     * @param class-string|null $queryBuilderClass
+     */
+    public function __construct(
+        ?string $queryBuilderClass
+    ) {
+        $this->queryBuilderClass = $queryBuilderClass;
+    }
 
-	/**
-	 * @param class-string|null $queryBuilderClass
-	 */
-	public function __construct(
-		?string $queryBuilderClass
-	)
-	{
-		$this->queryBuilderClass = $queryBuilderClass;
-	}
+    public function getClass(): string
+    {
+        return $this->queryBuilderClass ?? 'Doctrine\ORM\QueryBuilder';
+    }
 
-	public function getClass(): string
-	{
-		return $this->queryBuilderClass ?? 'Doctrine\ORM\QueryBuilder';
-	}
+    public function isMethodSupported(MethodReflection $methodReflection): bool
+    {
+        return $methodReflection->getName() === 'getDQL';
+    }
 
-	public function isMethodSupported(MethodReflection $methodReflection): bool
-	{
-		return $methodReflection->getName() === 'getDQL';
-	}
+    public function getTypeFromMethodCall(
+        MethodReflection $methodReflection,
+        MethodCall $methodCall,
+        Scope $scope
+    ): Type {
+        $type = $scope->getType(new MethodCall(
+            new MethodCall($methodCall->var, new Identifier('getQuery')),
+            new Identifier('getDQL'),
+        ));
 
-	public function getTypeFromMethodCall(
-		MethodReflection $methodReflection,
-		MethodCall $methodCall,
-		Scope $scope
-	): Type
-	{
-		$type = $scope->getType(new MethodCall(
-			new MethodCall($methodCall->var, new Identifier('getQuery')),
-			new Identifier('getDQL'),
-		));
-
-		return TypeCombinator::removeNull($type);
-	}
+        return TypeCombinator::removeNull($type);
+    }
 
 }

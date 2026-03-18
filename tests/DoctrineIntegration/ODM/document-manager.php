@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 use Cache\Adapter\PHPArray\ArrayCachePool;
 use Doctrine\Common\Annotations\AnnotationReader;
@@ -14,13 +16,13 @@ $config->setHydratorDir(__DIR__);
 $config->setHydratorNamespace('PHPstan\Doctrine\OdmHydrators');
 
 $config->setMetadataDriverImpl(
-	new AnnotationDriver(
-		new AnnotationReader(),
-		[__DIR__ . '/data'],
-	),
+    new AnnotationDriver(
+        new AnnotationReader(),
+        [__DIR__ . '/data'],
+    ),
 );
 
 return DocumentManager::create(
-	null,
-	$config,
+    null,
+    $config,
 );

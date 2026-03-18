@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Type\Doctrine\data\QueryResult\Entities;
@@ -10,7 +11,6 @@ use Doctrine\ORM\Mapping\Id;
 
 interface VehicleInterface
 {
-
 }
 
 /**
@@ -18,14 +18,14 @@ interface VehicleInterface
  */
 class Car implements VehicleInterface
 {
-	/**
-	 * @GeneratedValue()
-	 * @Column(type="integer")
-	 * @Id
-	 *
-	 * @var string
-	 */
-	public $id;
+    /**
+     * @GeneratedValue()
+     * @Column(type="integer")
+     * @Id
+     *
+     * @var string
+     */
+    public $id;
 }
 
 /**
@@ -33,12 +33,12 @@ class Car implements VehicleInterface
  */
 class Truck implements VehicleInterface
 {
-	/**
-	 * @GeneratedValue()
-	 * @Column(type="integer")
-	 * @Id
-	 *
-	 * @var string
-	 */
-	public $id;
+    /**
+     * @GeneratedValue()
+     * @Column(type="integer")
+     * @Id
+     *
+     * @var string
+     */
+    public $id;
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Type\Doctrine\Query;
 
@@ -7,25 +9,24 @@ use PHPStan\Type\Constant\ConstantStringType;
 
 class DqlConstantStringType extends ConstantStringType
 {
+    /** @var Literal::* */
+    private int $originLiteralType;
 
-	/** @var Literal::* */
-	private int $originLiteralType;
+    /**
+     * @param Literal::* $originLiteralType
+     */
+    public function __construct(string $value, int $originLiteralType)
+    {
+        parent::__construct($value);
+        $this->originLiteralType = $originLiteralType;
+    }
 
-	/**
-	 * @param Literal::* $originLiteralType
-	 */
-	public function __construct(string $value, int $originLiteralType)
-	{
-		parent::__construct($value);
-		$this->originLiteralType = $originLiteralType;
-	}
-
-	/**
-	 * @return Literal::*
-	 */
-	public function getOriginLiteralType(): int
-	{
-		return $this->originLiteralType;
-	}
+    /**
+     * @return Literal::*
+     */
+    public function getOriginLiteralType(): int
+    {
+        return $this->originLiteralType;
+    }
 
 }

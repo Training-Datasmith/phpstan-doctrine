@@ -1,15 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace MysqliResultRowCount;
 
-use Doctrine\DBAL\Result;
 use Doctrine\DBAL\Driver\Result as DriverResult;
+use Doctrine\DBAL\Result;
+
 use function PHPStan\Testing\assertType;
 
 function (Result $r): void {
-	assertType('int|numeric-string', $r->rowCount());
+    assertType('int|numeric-string', $r->rowCount());
 };
 
 function (DriverResult $r): void {
-	assertType('int|numeric-string', $r->rowCount());
+    assertType('int|numeric-string', $r->rowCount());
 };

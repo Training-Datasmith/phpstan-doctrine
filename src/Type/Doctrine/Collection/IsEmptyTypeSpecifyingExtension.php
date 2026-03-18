@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\Type\Doctrine\Collection;
 
@@ -14,66 +16,63 @@ use PHPStan\Type\MethodTypeSpecifyingExtension;
 
 final class IsEmptyTypeSpecifyingExtension implements MethodTypeSpecifyingExtension, TypeSpecifierAwareExtension
 {
+    private const IS_EMPTY_METHOD_NAME = 'isEmpty';
+    private const FIRST_METHOD_NAME = 'first';
+    private const LAST_METHOD_NAME = 'last';
 
-	private const IS_EMPTY_METHOD_NAME = 'isEmpty';
-	private const FIRST_METHOD_NAME = 'first';
-	private const LAST_METHOD_NAME = 'last';
+    private TypeSpecifier $typeSpecifier;
 
-	private TypeSpecifier $typeSpecifier;
+    /** @var class-string */
+    private string $collectionClass;
 
-	/** @var class-string */
-	private string $collectionClass;
+    /**
+     * @param class-string $collectionClass
+     */
+    public function __construct(string $collectionClass)
+    {
+        $this->collectionClass = $collectionClass;
+    }
 
-	/**
-	 * @param class-string $collectionClass
-	 */
-	public function __construct(string $collectionClass)
-	{
-		$this->collectionClass = $collectionClass;
-	}
+    public function getClass(): string
+    {
+        return $this->collectionClass;
+    }
 
-	public function getClass(): string
-	{
-		return $this->collectionClass;
-	}
+    public function isMethodSupported(
+        MethodReflection $methodReflection,
+        MethodCall $node,
+        TypeSpecifierContext $context
+    ): bool {
+        return $methodReflection->getDeclaringClass()->is($this->collectionClass)
+            && $methodReflection->getName() === self::IS_EMPTY_METHOD_NAME;
+    }
 
-	public function isMethodSupported(
-		MethodReflection $methodReflection,
-		MethodCall $node,
-		TypeSpecifierContext $context
-	): bool
-	{
-		return $methodReflection->getDeclaringClass()->is($this->collectionClass)
-			&& $methodReflection->getName() === self::IS_EMPTY_METHOD_NAME;
-	}
+    public function specifyTypes(
+        MethodReflection $methodReflection,
+        MethodCall $node,
+        Scope $scope,
+        TypeSpecifierContext $context
+    ): SpecifiedTypes {
+        $first = $this->typeSpecifier->create(
+            new MethodCall($node->var, self::FIRST_METHOD_NAME),
+            new ConstantBooleanType(false),
+            $context,
+            $scope,
+        );
 
-	public function specifyTypes(
-		MethodReflection $methodReflection,
-		MethodCall $node,
-		Scope $scope,
-		TypeSpecifierContext $context
-	): SpecifiedTypes
-	{
-		$first = $this->typeSpecifier->create(
-			new MethodCall($node->var, self::FIRST_METHOD_NAME),
-			new ConstantBooleanType(false),
-			$context,
-			$scope,
-		);
+        $last = $this->typeSpecifier->create(
+            new MethodCall($node->var, self::LAST_METHOD_NAME),
+            new ConstantBooleanType(false),
+            $context,
+            $scope,
+        );
 
-		$last = $this->typeSpecifier->create(
-			new MethodCall($node->var, self::LAST_METHOD_NAME),
-			new ConstantBooleanType(false),
-			$context,
-			$scope,
-		);
+        return $first->unionWith($last);
+    }
 
-		return $first->unionWith($last);
-	}
-
-	public function setTypeSpecifier(TypeSpecifier $typeSpecifier): void
-	{
-		$this->typeSpecifier = $typeSpecifier;
-	}
+    public function setTypeSpecifier(TypeSpecifier $typeSpecifier): void
+    {
+        $this->typeSpecifier = $typeSpecifier;
+    }
 
 }
