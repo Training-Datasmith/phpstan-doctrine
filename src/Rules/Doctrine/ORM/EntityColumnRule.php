@@ -191,7 +191,7 @@ class EntityColumnRule implements Rule
 			}
 		}
 
-		$nullable = isset($fieldMapping['nullable']) ? $fieldMapping['nullable'] === true : false;
+		$nullable = isset($fieldMapping['nullable']) && $fieldMapping['nullable'] === true;
 		if ($nullable) {
 			$writableToPropertyType = TypeCombinator::addNull($writableToPropertyType);
 			$writableToDatabaseType = TypeCombinator::addNull($writableToDatabaseType);

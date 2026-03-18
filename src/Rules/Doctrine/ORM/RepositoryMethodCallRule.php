@@ -69,14 +69,13 @@ class RepositoryMethodCallRule implements Rule
 		foreach ($argType->getConstantArrays() as $constantArray) {
 			foreach ($constantArray->getKeyTypes() as $keyType) {
 				foreach ($keyType->getConstantStrings() as $fieldName) {
-					if (
-						$classMetadata->hasField($fieldName->getValue())
-						|| $classMetadata->hasAssociation($fieldName->getValue())
-					) {
-						continue;
-					}
-
-					$messages[] = RuleErrorBuilder::message(sprintf(
+					if ($classMetadata->hasField($fieldName->getValue())) {
+                        continue;
+                    }
+                    if ($classMetadata->hasAssociation($fieldName->getValue())) {
+                        continue;
+                    }
+                    $messages[] = RuleErrorBuilder::message(sprintf(
 						'Call to method %s::%s() - entity %s does not have a field named $%s.',
 						$calledOnType->describe(VerbosityLevel::typeOnly()),
 						$methodName,

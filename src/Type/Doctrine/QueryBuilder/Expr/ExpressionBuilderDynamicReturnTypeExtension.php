@@ -53,9 +53,6 @@ class ExpressionBuilderDynamicReturnTypeExtension implements DynamicMethodReturn
 			return null;
 		}
 
-		/** @var EntityManagerInterface $objectManager */
-		$objectManager = $objectManager;
-
 		$queryBuilder = $objectManager->createQueryBuilder();
 
 		try {

@@ -9,14 +9,14 @@ class DqlConstantStringType extends ConstantStringType
 {
 
 	/** @var Literal::* */
-	private $originLiteralType;
+	private int $originLiteralType;
 
 	/**
 	 * @param Literal::* $originLiteralType
 	 */
 	public function __construct(string $value, int $originLiteralType)
 	{
-		parent::__construct($value, false);
+		parent::__construct($value);
 		$this->originLiteralType = $originLiteralType;
 	}
 

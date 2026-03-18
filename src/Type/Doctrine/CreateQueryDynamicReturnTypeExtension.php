@@ -91,7 +91,7 @@ final class CreateQueryDynamicReturnTypeExtension implements DynamicMethodReturn
 
 				$em = $this->objectMetadataResolver->getObjectManager();
 				if (!$em instanceof EntityManagerInterface) {
-					return new QueryType($queryString, null, null);
+					return new QueryType($queryString);
 				}
 
 				$typeBuilder = new QueryResultTypeBuilder();
@@ -99,10 +99,8 @@ final class CreateQueryDynamicReturnTypeExtension implements DynamicMethodReturn
 				try {
 					$query = $em->createQuery($queryString);
 					QueryResultTypeWalker::walk($query, $typeBuilder, $this->descriptorRegistry, $this->phpVersion, $this->driverDetector);
-				} catch (ORMException | DBALException | NewDBALException | CommonException | MappingException | \Doctrine\ORM\Exception\ORMException $e) {
-					return new QueryType($queryString, null, null);
-				} catch (AssertionError $e) {
-					return new QueryType($queryString, null, null);
+				} catch (ORMException|DBALException|NewDBALException|CommonException|MappingException|\Doctrine\ORM\Exception\ORMException|AssertionError $e) {
+					return new QueryType($queryString);
 				}
 
 				return new QueryType($queryString, $typeBuilder->getIndexType(), $typeBuilder->getResultType());

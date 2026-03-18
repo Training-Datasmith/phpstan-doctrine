@@ -102,9 +102,6 @@ class QueryBuilderDqlRule implements Rule
 			return [];
 		}
 
-		/** @var EntityManagerInterface $objectManager */
-		$objectManager = $objectManager;
-
 		$messages = [];
 		foreach ($dqls as $dql) {
 			try {

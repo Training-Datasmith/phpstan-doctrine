@@ -37,7 +37,7 @@ class EntityManagerInterfaceThrowTypeExtension implements DynamicMethodThrowType
 
 		if ((new ObjectType(EntityManagerInterface::class))->isSuperTypeOf($type)->yes()) {
 			return TypeCombinator::union(
-				...array_map(static fn ($class): Type => new ObjectType($class), self::SUPPORTED_METHOD[$methodReflection->getName()]),
+				...array_map(static fn (string $class): Type => new ObjectType($class), self::SUPPORTED_METHOD[$methodReflection->getName()]),
 			);
 		}
 

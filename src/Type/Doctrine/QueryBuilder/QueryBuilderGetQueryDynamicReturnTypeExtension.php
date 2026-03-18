@@ -120,9 +120,6 @@ class QueryBuilderGetQueryDynamicReturnTypeExtension implements DynamicMethodRet
 			return null;
 		}
 
-		/** @var EntityManagerInterface $objectManager */
-		$objectManager = $objectManager;
-
 		$resultTypes = [];
 		foreach ($queryBuilderTypes as $queryBuilderType) {
 			$queryBuilder = $objectManager->createQueryBuilder();
@@ -193,7 +190,7 @@ class QueryBuilderGetQueryDynamicReturnTypeExtension implements DynamicMethodRet
 	{
 		$em = $this->objectMetadataResolver->getObjectManager();
 		if (!$em instanceof EntityManagerInterface) {
-			return new QueryType($dql, null);
+			return new QueryType($dql);
 		}
 
 		$typeBuilder = new QueryResultTypeBuilder();
@@ -201,10 +198,8 @@ class QueryBuilderGetQueryDynamicReturnTypeExtension implements DynamicMethodRet
 		try {
 			$query = $em->createQuery($dql);
 			QueryResultTypeWalker::walk($query, $typeBuilder, $this->descriptorRegistry, $this->phpVersion, $this->driverDetector);
-		} catch (ORMException | DBALException | CommonException | MappingException | \Doctrine\ORM\Exception\ORMException $e) {
-			return new QueryType($dql, null);
-		} catch (AssertionError $e) {
-			return new QueryType($dql, null);
+		} catch (ORMException|DBALException|CommonException|MappingException|\Doctrine\ORM\Exception\ORMException|AssertionError $e) {
+			return new QueryType($dql);
 		}
 
 		return new QueryType($dql, $typeBuilder->getIndexType(), $typeBuilder->getResultType());

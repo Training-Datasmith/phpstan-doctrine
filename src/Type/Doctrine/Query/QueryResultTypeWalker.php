@@ -106,7 +106,7 @@ class QueryResultTypeWalker extends SqlWalker
 	private PhpVersion $phpVersion;
 
 	/** @var DriverDetector::*|null */
-	private $driverType;
+	private ?string $driverType;
 
 	/** @var array<mixed> */
 	private array $driverOptions;
@@ -279,7 +279,7 @@ class QueryResultTypeWalker extends SqlWalker
 		$fieldName = $pathExpr->field;
 		$dqlAlias = $pathExpr->identificationVariable;
 		$qComp = $this->queryComponents[$dqlAlias];
-		assert(array_key_exists('metadata', $qComp));
+		assert(property_exists($qComp, 'metadata'));
 
 		/** @var ClassMetadata<object> $class */
 		$class = $qComp['metadata'];
@@ -664,7 +664,7 @@ class QueryResultTypeWalker extends SqlWalker
 				$assocField = $function->pathExpression->field;
 				assert(is_string($assocField));
 				$queryComp = $this->queryComponents[$dqlAlias];
-				assert(array_key_exists('metadata', $queryComp));
+				assert(property_exists($queryComp, 'metadata'));
 				$class = $queryComp['metadata'];
 				$assoc = $class->associationMappings[$assocField];
 
@@ -976,11 +976,6 @@ class QueryResultTypeWalker extends SqlWalker
 
 		switch (true) {
 			case $joinDeclaration instanceof AST\RangeVariableDeclaration:
-				$dqlAlias = $joinDeclaration->aliasIdentificationVariable;
-
-				$this->nullableQueryComponents[$dqlAlias] = $joinType === AST\Join::JOIN_TYPE_LEFT || $joinType === AST\Join::JOIN_TYPE_LEFTOUTER;
-
-				break;
 			case $joinDeclaration instanceof AST\JoinAssociationDeclaration:
 				$dqlAlias = $joinDeclaration->aliasIdentificationVariable;
 
@@ -1060,12 +1055,13 @@ class QueryResultTypeWalker extends SqlWalker
 
 			$containsFloat = true;
 		}
+        if ($containsFloat && $allIsNumericExcludingLiteralString) {
+            return $this->simpleFloatify($originalResult);
+        }
 
-		if ($containsFloat && $allIsNumericExcludingLiteralString) {
-			return $this->simpleFloatify($originalResult);
-		} elseif ($containsString) {
-			return $this->simpleStringify($originalResult);
-		}
+		if ($containsString) {
+            return $this->simpleStringify($originalResult);
+        }
 
 		return $originalResult;
 	}
@@ -1175,7 +1171,7 @@ class QueryResultTypeWalker extends SqlWalker
 		if (is_string($expr)) {
 			$dqlAlias = $expr;
 			$queryComp = $this->queryComponents[$dqlAlias];
-			assert(array_key_exists('metadata', $queryComp));
+			assert(property_exists($queryComp, 'metadata'));
 			$class = $queryComp['metadata'];
 			$resultAlias = $selectExpression->fieldIdentificationVariable ?? $dqlAlias;
 
@@ -1206,7 +1202,7 @@ class QueryResultTypeWalker extends SqlWalker
 
 			$dqlAlias = $expr->identificationVariable;
 			$qComp = $this->queryComponents[$dqlAlias];
-			assert(array_key_exists('metadata', $qComp));
+			assert(property_exists($qComp, 'metadata'));
 			$class = $qComp['metadata'];
 
 			[$typeName, $enumType, $enumValues] = $this->getTypeOfField($class, $fieldName);
@@ -1262,12 +1258,13 @@ class QueryResultTypeWalker extends SqlWalker
 
 					if ($type instanceof IntegerType) {
 						$stringify = $this->shouldStringifyExpressions($type);
+                        if ($stringify->yes()) {
+                            return $type->toString();
+                        }
 
-						if ($stringify->yes()) {
-							return $type->toString();
-						} elseif ($stringify->maybe()) {
-							return TypeCombinator::union($type->toString(), $type);
-						}
+						if ($stringify->maybe()) {
+                            return TypeCombinator::union($type->toString(), $type);
+                        }
 
 						return $type;
 					}
@@ -1278,24 +1275,26 @@ class QueryResultTypeWalker extends SqlWalker
 						// e.g. 1.0 on sqlite results to '1' with pdo_stringify on PHP 8.1, but '1.0' on PHP 8.0 with no setup
 						// so we relax constant types and return just numeric-string to avoid those issues
 						$stringifiedFloat = $this->createNumericString(false, false, true);
+                        if ($stringify->yes()) {
+                            return $stringifiedFloat;
+                        }
 
-						if ($stringify->yes()) {
-							return $stringifiedFloat;
-						} elseif ($stringify->maybe()) {
-							return TypeCombinator::union($stringifiedFloat, $type);
-						}
+						if ($stringify->maybe()) {
+                            return TypeCombinator::union($stringifiedFloat, $type);
+                        }
 
 						return $type;
 					}
 
 					if ($type instanceof BooleanType) {
 						$stringify = $this->shouldStringifyExpressions($type);
+                        if ($stringify->yes()) {
+                            return $type->toInteger()->toString();
+                        }
 
-						if ($stringify->yes()) {
-							return $type->toInteger()->toString();
-						} elseif ($stringify->maybe()) {
-							return TypeCombinator::union($type->toInteger()->toString(), $type);
-						}
+						if ($stringify->maybe()) {
+                            return TypeCombinator::union($type->toInteger()->toString(), $type);
+                        }
 
 						return $type;
 					}
@@ -1865,10 +1864,11 @@ class QueryResultTypeWalker extends SqlWalker
 
 		if ($unionWithoutNull->isInteger()->yes()) {
 			if ($this->driverType === DriverDetector::MYSQLI || $this->driverType === DriverDetector::PDO_MYSQL) {
-				return $this->createNumericString($nullable, true, true);
-			} elseif ($this->driverType === DriverDetector::PDO_PGSQL || $this->driverType === DriverDetector::PGSQL || $this->driverType === DriverDetector::SQLITE3 || $this->driverType === DriverDetector::PDO_SQLITE) {
-				return $this->createInteger($nullable);
-			}
+                return $this->createNumericString($nullable, true, true);
+            }
+            if ($this->driverType === DriverDetector::PDO_PGSQL || $this->driverType === DriverDetector::PGSQL || $this->driverType === DriverDetector::SQLITE3 || $this->driverType === DriverDetector::PDO_SQLITE) {
+                return $this->createInteger($nullable);
+            }
 
 			return new MixedType();
 		}
@@ -2027,7 +2027,7 @@ class QueryResultTypeWalker extends SqlWalker
 	 *
 	 * @return list<string>|null
 	 */
-	private function detectEnumValues(string $typeName, $metadata): ?array
+	private function detectEnumValues(string $typeName, array $metadata): ?array
 	{
 		if ($typeName !== 'enum') {
 			return null;
@@ -2076,7 +2076,7 @@ class QueryResultTypeWalker extends SqlWalker
 			}
 
 			if ($enumValues !== null) {
-				$enumValuesType = TypeCombinator::union(...array_map(static fn (string $value) => new ConstantStringType($value), $enumValues));
+				$enumValuesType = TypeCombinator::union(...array_map(static fn (string $value): \PHPStan\Type\Constant\ConstantStringType => new ConstantStringType($value), $enumValues));
 				$type = TypeCombinator::intersect($enumValuesType, $type);
 			}
 
@@ -2092,7 +2092,7 @@ class QueryResultTypeWalker extends SqlWalker
 		}
 
 		if ($nullable) {
-			$type = TypeCombinator::addNull($type);
+			return TypeCombinator::addNull($type);
 		}
 
 		return $type;
@@ -2120,19 +2120,19 @@ class QueryResultTypeWalker extends SqlWalker
 		}
 
 		if ($enumType !== null) {
-			$enumTypes = array_map(static fn ($enumType) => ConstantTypeHelper::getTypeFromValue($enumType->value), $enumType::cases());
+			$enumTypes = array_map(static fn (\BackedEnum $enumType): \PHPStan\Type\Type => ConstantTypeHelper::getTypeFromValue($enumType->value), $enumType::cases());
 			$enumType = TypeCombinator::union(...$enumTypes);
 			$enumType = TypeCombinator::union($enumType, $enumType->toString());
 			$type = TypeCombinator::intersect($enumType, $type);
 		}
 
 		if ($enumValues !== null) {
-			$enumValuesType = TypeCombinator::union(...array_map(static fn (string $value) => new ConstantStringType($value), $enumValues));
+			$enumValuesType = TypeCombinator::union(...array_map(static fn (string $value): \PHPStan\Type\Constant\ConstantStringType => new ConstantStringType($value), $enumValues));
 			$type = TypeCombinator::intersect($enumValuesType, $type);
 		}
 
 		if ($nullable) {
-			$type = TypeCombinator::addNull($type);
+			return TypeCombinator::addNull($type);
 		}
 
 		return $type;
@@ -2173,7 +2173,7 @@ class QueryResultTypeWalker extends SqlWalker
 	private function shouldStringifyExpressions(Type $type): TrinaryLogic
 	{
 		if (in_array($this->driverType, [DriverDetector::PDO_MYSQL, DriverDetector::PDO_PGSQL, DriverDetector::PDO_SQLITE], true)) {
-			$stringifyFetches = isset($this->driverOptions[PDO::ATTR_STRINGIFY_FETCHES]) ? (bool) $this->driverOptions[PDO::ATTR_STRINGIFY_FETCHES] : false;
+			$stringifyFetches = isset($this->driverOptions[PDO::ATTR_STRINGIFY_FETCHES]) && (bool) $this->driverOptions[PDO::ATTR_STRINGIFY_FETCHES];
 
 			if ($this->driverType === DriverDetector::PDO_MYSQL) {
 				$emulatedPrepares = isset($this->driverOptions[PDO::ATTR_EMULATE_PREPARES]) ? (bool) $this->driverOptions[PDO::ATTR_EMULATE_PREPARES] : true;

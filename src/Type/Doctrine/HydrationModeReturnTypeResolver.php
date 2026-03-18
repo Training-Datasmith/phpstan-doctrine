@@ -66,7 +66,7 @@ class HydrationModeReturnTypeResolver
 			case 'getOneOrNullResult':
 				$nullableQueryResultType = TypeCombinator::addNull($queryResultType);
 				if ($queryResultType instanceof BenevolentUnionType) {
-					$nullableQueryResultType = TypeUtils::toBenevolentUnion($nullableQueryResultType);
+					return TypeUtils::toBenevolentUnion($nullableQueryResultType);
 				}
 
 				return $nullableQueryResultType;

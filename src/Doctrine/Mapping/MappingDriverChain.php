@@ -36,7 +36,10 @@ class MappingDriverChain implements MappingDriver
 		}
 	}
 
-	public function getAllClassNames()
+	/**
+     * @return mixed[]
+     */
+    public function getAllClassNames(): array
 	{
 		$all = [];
 		foreach ($this->drivers as $driver) {
@@ -51,7 +54,7 @@ class MappingDriverChain implements MappingDriver
 	/**
 	 * @param class-string $className
 	 */
-	public function isTransient($className)
+	public function isTransient($className): bool
 	{
 		foreach ($this->drivers as $driver) {
 			try {

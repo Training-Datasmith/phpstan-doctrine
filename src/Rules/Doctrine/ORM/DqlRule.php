@@ -66,9 +66,6 @@ class DqlRule implements Rule
 			return [];
 		}
 
-		/** @var EntityManagerInterface $objectManager */
-		$objectManager = $objectManager;
-
 		$messages = [];
 		foreach ($dqls as $dql) {
 			$query = $objectManager->createQuery($dql->getValue());

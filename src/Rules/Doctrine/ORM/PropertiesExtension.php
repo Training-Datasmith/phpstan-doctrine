@@ -26,8 +26,10 @@ class PropertiesExtension implements ReadWritePropertiesExtension
 		if ($metadata === null) {
 			return false;
 		}
-
-		return $metadata->hasField($propertyName) || $metadata->hasAssociation($propertyName);
+        if ($metadata->hasField($propertyName)) {
+            return true;
+        }
+        return (bool) $metadata->hasAssociation($propertyName);
 	}
 
 	public function isAlwaysWritten(PropertyReflection $property, string $propertyName): bool

@@ -19,10 +19,7 @@ class ExprType extends ObjectType
 		$this->exprObject = $exprObject;
 	}
 
-	/**
-	 * @return object
-	 */
-	public function getExprObject()
+	public function getExprObject(): object
 	{
 		return $this->exprObject;
 	}

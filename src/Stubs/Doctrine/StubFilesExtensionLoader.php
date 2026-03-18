@@ -25,7 +25,7 @@ class StubFilesExtensionLoader implements StubFilesExtension
 
 	public function getFiles(): array
 	{
-		$stubsDir = dirname(dirname(dirname(__DIR__))) . '/stubs';
+		$stubsDir = dirname(__DIR__, 3) . '/stubs';
 		$files = [];
 
 		if ($this->isInstalledVersion('doctrine/dbal', 4)) {
