@@ -1,11 +1,9 @@
 <?php
 
-declare(strict_types=1);
-
-namespace PHPStan\Rules\Doctrine\ORM;
+declare (strict_types=1);
+namespace Php_Stan\Rules\Doctrine\ORM;
 
 use Exception;
-
-class DynamicQueryBuilderArgumentException extends Exception
+class Dynamic_Query_Builder_Argument_Exception extends Exception
 {
 }

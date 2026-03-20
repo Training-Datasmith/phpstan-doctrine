@@ -1,65 +1,50 @@
 <?php
 
-declare(strict_types=1);
+declare (strict_types=1);
+namespace Php_Stan\Reflection\Doctrine;
 
-namespace PHPStan\Reflection\Doctrine;
-
-use PHPStan\Reflection\ParameterReflection;
-use PHPStan\Reflection\PassedByReference;
-use PHPStan\Type\Type;
-
-class DummyParameter implements ParameterReflection
+use Php_Stan\Reflection\Parameter_Reflection;
+use Php_Stan\Reflection\Passed_By_Reference;
+use Php_Stan\Type\Type;
+class Dummy_Parameter implements Parameter_Reflection
 {
     private string $name;
-
     private Type $type;
-
     private bool $optional;
-
-    private PassedByReference $passedByReference;
-
+    private Passed_By_Reference $passed_by_reference;
     private bool $variadic;
-
-    private ?Type $defaultValue = null;
-
-    public function __construct(string $name, Type $type, bool $optional, ?PassedByReference $passedByReference, bool $variadic, ?Type $defaultValue)
+    private ?Type $default_value = null;
+    public function __construct(string $name, Type $type, bool $optional, ?Passed_By_Reference $passed_by_reference, bool $variadic, ?Type $default_value)
     {
         $this->name = $name;
         $this->type = $type;
         $this->optional = $optional;
-        $this->passedByReference = $passedByReference ?? PassedByReference::createNo();
+        $this->passed_by_reference = $passed_by_reference ?? Passed_By_Reference::create_no();
         $this->variadic = $variadic;
-        $this->defaultValue = $defaultValue;
+        $this->default_value = $default_value;
     }
-
-    public function getName(): string
+    public function get_name(): string
     {
         return $this->name;
     }
-
-    public function isOptional(): bool
+    public function is_optional(): bool
     {
         return $this->optional;
     }
-
-    public function getType(): Type
+    public function get_type(): Type
     {
         return $this->type;
     }
-
-    public function passedByReference(): PassedByReference
+    public function passed_by_reference(): Passed_By_Reference
     {
-        return $this->passedByReference;
+        return $this->passed_by_reference;
     }
-
-    public function isVariadic(): bool
+    public function is_variadic(): bool
     {
         return $this->variadic;
     }
-
-    public function getDefaultValue(): ?Type
+    public function get_default_value(): ?Type
     {
-        return $this->defaultValue;
+        return $this->default_value;
     }
-
 }

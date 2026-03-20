@@ -1,32 +1,27 @@
 <?php
 
-declare(strict_types=1);
-
-namespace PHPStan\Type\Doctrine\Query;
+declare (strict_types=1);
+namespace Php_Stan\Type\Doctrine\Query;
 
 use Doctrine\ORM\Query\AST\Literal;
-use PHPStan\Type\Constant\ConstantStringType;
-
-class DqlConstantStringType extends ConstantStringType
+use Php_Stan\Type\Constant\Constant_String_Type;
+class Dql_Constant_String_Type extends Constant_String_Type
 {
     /** @var Literal::* */
-    private int $originLiteralType;
-
+    private int $origin_literal_type;
     /**
      * @param Literal::* $originLiteralType
      */
-    public function __construct(string $value, int $originLiteralType)
+    public function __construct(string $value, int $origin_literal_type)
     {
         parent::__construct($value);
-        $this->originLiteralType = $originLiteralType;
+        $this->origin_literal_type = $origin_literal_type;
     }
-
     /**
      * @return Literal::*
      */
-    public function getOriginLiteralType(): int
+    public function get_origin_literal_type(): int
     {
-        return $this->originLiteralType;
+        return $this->origin_literal_type;
     }
-
 }

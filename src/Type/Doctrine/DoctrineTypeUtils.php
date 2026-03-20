@@ -1,64 +1,52 @@
 <?php
 
-declare(strict_types=1);
+declare (strict_types=1);
+namespace Php_Stan\Type\Doctrine;
 
-namespace PHPStan\Type\Doctrine;
-
-use PHPStan\Type\Doctrine\Query\QueryType;
-use PHPStan\Type\Doctrine\QueryBuilder\QueryBuilderType;
-use PHPStan\Type\Type;
-use PHPStan\Type\UnionType;
-
-class DoctrineTypeUtils
+use Php_Stan\Type\Doctrine\Query\Query_Type;
+use Php_Stan\Type\Doctrine\Query_Builder\Query_Builder_Type;
+use Php_Stan\Type\Type;
+use Php_Stan\Type\Union_Type;
+class Doctrine_Type_Utils
 {
     /**
      * @return QueryBuilderType[]
      */
-    public static function getQueryBuilderTypes(Type $type): array
+    public static function get_query_builder_types(Type $type): array
     {
-        if ($type instanceof QueryBuilderType) {
+        if ($type instanceof Query_Builder_Type) {
             return [$type];
         }
-
-        if ($type instanceof UnionType) {
+        if ($type instanceof Union_Type) {
             $types = [];
-            foreach ($type->getTypes() as $innerType) {
-                if (!$innerType instanceof QueryBuilderType) {
+            foreach ($type->get_types() as $inner_type) {
+                if (!$inner_type instanceof Query_Builder_Type) {
                     return [];
                 }
-
-                $types[] = $innerType;
+                $types[] = $inner_type;
             }
-
             return $types;
         }
-
         return [];
     }
-
     /**
      * @return QueryType[]
      */
-    public static function getQueryTypes(Type $type): array
+    public static function get_query_types(Type $type): array
     {
-        if ($type instanceof QueryType) {
+        if ($type instanceof Query_Type) {
             return [$type];
         }
-
-        if ($type instanceof UnionType) {
+        if ($type instanceof Union_Type) {
             $types = [];
-            foreach ($type->getTypes() as $innerType) {
-                if (!$innerType instanceof QueryType) {
+            foreach ($type->get_types() as $inner_type) {
+                if (!$inner_type instanceof Query_Type) {
                     return [];
                 }
-
-                $types[] = $innerType;
+                $types[] = $inner_type;
             }
-
             return $types;
         }
-
         return [];
     }
-
 }

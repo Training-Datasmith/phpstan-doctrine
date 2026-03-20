@@ -1,101 +1,75 @@
 <?php
 
-declare(strict_types=1);
+declare (strict_types=1);
+namespace Php_Stan\Type\Doctrine;
 
-namespace PHPStan\Type\Doctrine;
-
-use Doctrine\ORM\AbstractQuery;
-use Doctrine\Persistence\ObjectManager;
-use PHPStan\Type\Accessory\AccessoryArrayListType;
-use PHPStan\Type\ArrayType;
-use PHPStan\Type\BenevolentUnionType;
-use PHPStan\Type\Constant\ConstantIntegerType;
-use PHPStan\Type\IntegerRangeType;
-use PHPStan\Type\IntegerType;
-use PHPStan\Type\IterableType;
-use PHPStan\Type\ObjectWithoutClassType;
-use PHPStan\Type\Type;
-use PHPStan\Type\TypeCombinator;
-use PHPStan\Type\TypeUtils;
-use PHPStan\Type\VoidType;
-
-class HydrationModeReturnTypeResolver
+use Doctrine\ORM\Abstract_Query;
+use Doctrine\Persistence\Object_Manager;
+use Php_Stan\Type\Accessory\Accessory_Array_List_Type;
+use Php_Stan\Type\Array_Type;
+use Php_Stan\Type\Benevolent_Union_Type;
+use Php_Stan\Type\Constant\Constant_Integer_Type;
+use Php_Stan\Type\Integer_Range_Type;
+use Php_Stan\Type\Integer_Type;
+use Php_Stan\Type\Iterable_Type;
+use Php_Stan\Type\Object_Without_Class_Type;
+use Php_Stan\Type\Type;
+use Php_Stan\Type\Type_Combinator;
+use Php_Stan\Type\Type_Utils;
+use Php_Stan\Type\Void_Type;
+class Hydration_Mode_Return_Type_Resolver
 {
-    public function getMethodReturnTypeForHydrationMode(
-        string $methodName,
-        Type $hydrationMode,
-        Type $queryKeyType,
-        Type $queryResultType,
-        ?ObjectManager $objectManager
-    ): ?Type {
-        $isVoidType = (new VoidType())->isSuperTypeOf($queryResultType);
-
-        if ($isVoidType->yes()) {
+    public function get_method_return_type_for_hydration_mode(string $method_name, Type $hydration_mode, Type $query_key_type, Type $query_result_type, ?Object_Manager $object_manager): ?Type
+    {
+        $is_void_type = (new Void_Type())->is_super_type_of($query_result_type);
+        if ($is_void_type->yes()) {
             // A void query result type indicates an UPDATE or DELETE query.
             // In this case all methods return the number of affected rows.
-            return IntegerRangeType::fromInterval(0, null);
+            return Integer_Range_Type::from_interval(0, null);
         }
-
-        if ($isVoidType->maybe()) {
+        if ($is_void_type->maybe()) {
             // We can't be sure what the query type is, so we return the
             // declared return type of the method.
             return null;
         }
-
-        if (!$hydrationMode instanceof ConstantIntegerType) {
+        if (!$hydration_mode instanceof Constant_Integer_Type) {
             return null;
         }
-
-        switch ($hydrationMode->getValue()) {
-            case AbstractQuery::HYDRATE_OBJECT:
+        switch ($hydration_mode->get_value()) {
+            case Abstract_Query::HYDRATE_OBJECT:
                 break;
-            case AbstractQuery::HYDRATE_SIMPLEOBJECT:
-                $queryResultType = $this->getSimpleObjectHydratedReturnType($queryResultType);
+            case Abstract_Query::HYDRATE_SIMPLEOBJECT:
+                $query_result_type = $this->get_simple_object_hydrated_return_type($query_result_type);
                 break;
             default:
                 return null;
         }
-
-        if ($queryResultType === null) {
+        if ($query_result_type === null) {
             return null;
         }
-
-        switch ($methodName) {
+        switch ($method_name) {
             case 'getSingleResult':
-                return $queryResultType;
+                return $query_result_type;
             case 'getOneOrNullResult':
-                $nullableQueryResultType = TypeCombinator::addNull($queryResultType);
-                if ($queryResultType instanceof BenevolentUnionType) {
-                    return TypeUtils::toBenevolentUnion($nullableQueryResultType);
+                $nullable_query_result_type = Type_Combinator::add_null($query_result_type);
+                if ($query_result_type instanceof Benevolent_Union_Type) {
+                    return Type_Utils::to_benevolent_union($nullable_query_result_type);
                 }
-
-                return $nullableQueryResultType;
+                return $nullable_query_result_type;
             case 'toIterable':
-                return new IterableType(
-                    $queryKeyType->isNull()->yes() ? new IntegerType() : $queryKeyType,
-                    $queryResultType,
-                );
+                return new Iterable_Type($query_key_type->is_null()->yes() ? new Integer_Type() : $query_key_type, $query_result_type);
             default:
-                if ($queryKeyType->isNull()->yes()) {
-                    return TypeCombinator::intersect(new ArrayType(
-                        new IntegerType(),
-                        $queryResultType,
-                    ), new AccessoryArrayListType());
+                if ($query_key_type->is_null()->yes()) {
+                    return Type_Combinator::intersect(new Array_Type(new Integer_Type(), $query_result_type), new Accessory_Array_List_Type());
                 }
-                return new ArrayType(
-                    $queryKeyType,
-                    $queryResultType,
-                );
+                return new Array_Type($query_key_type, $query_result_type);
         }
     }
-
-    private function getSimpleObjectHydratedReturnType(Type $queryResultType): ?Type
+    private function get_simple_object_hydrated_return_type(Type $query_result_type): ?Type
     {
-        if ((new ObjectWithoutClassType())->isSuperTypeOf($queryResultType)->yes()) {
-            return $queryResultType;
+        if ((new Object_Without_Class_Type())->is_super_type_of($query_result_type)->yes()) {
+            return $query_result_type;
         }
-
         return null;
     }
-
 }

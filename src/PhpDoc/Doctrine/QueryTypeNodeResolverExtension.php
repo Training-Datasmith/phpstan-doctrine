@@ -1,55 +1,40 @@
 <?php
 
-declare(strict_types=1);
-
-namespace PHPStan\PhpDoc\Doctrine;
+declare (strict_types=1);
+namespace Php_Stan\Php_Doc\Doctrine;
 
 use function count;
-
-use Doctrine\ORM\AbstractQuery;
+use Doctrine\ORM\Abstract_Query;
 use Doctrine\ORM\Query;
-use PHPStan\Analyser\NameScope;
-use PHPStan\PhpDoc\TypeNodeResolver;
-use PHPStan\PhpDoc\TypeNodeResolverAwareExtension;
-use PHPStan\PhpDoc\TypeNodeResolverExtension;
-use PHPStan\PhpDocParser\Ast\Type\GenericTypeNode;
-use PHPStan\PhpDocParser\Ast\Type\TypeNode;
-use PHPStan\Type\Generic\GenericObjectType;
-use PHPStan\Type\NullType;
-use PHPStan\Type\Type;
-
-class QueryTypeNodeResolverExtension implements TypeNodeResolverExtension, TypeNodeResolverAwareExtension
+use Php_Stan\Analyser\Name_Scope;
+use Php_Stan\Php_Doc\Type_Node_Resolver;
+use Php_Stan\Php_Doc\Type_Node_Resolver_Aware_Extension;
+use Php_Stan\Php_Doc\Type_Node_Resolver_Extension;
+use Php_Stan\Php_Doc_Parser\Ast\Type\Generic_Type_Node;
+use Php_Stan\Php_Doc_Parser\Ast\Type\Type_Node;
+use Php_Stan\Type\Generic\Generic_Object_Type;
+use Php_Stan\Type\Null_Type;
+use Php_Stan\Type\Type;
+class Query_Type_Node_Resolver_Extension implements Type_Node_Resolver_Extension, Type_Node_Resolver_Aware_Extension
 {
-    private TypeNodeResolver $typeNodeResolver;
-
-    public function setTypeNodeResolver(TypeNodeResolver $typeNodeResolver): void
+    private Type_Node_Resolver $type_node_resolver;
+    public function set_type_node_resolver(Type_Node_Resolver $type_node_resolver): void
     {
-        $this->typeNodeResolver = $typeNodeResolver;
+        $this->type_node_resolver = $type_node_resolver;
     }
-
-    public function resolve(TypeNode $typeNode, NameScope $nameScope): ?Type
+    public function resolve(Type_Node $type_node, Name_Scope $name_scope): ?Type
     {
-        if (!$typeNode instanceof GenericTypeNode) {
+        if (!$type_node instanceof Generic_Type_Node) {
             return null;
         }
-
-        $typeName = $nameScope->resolveStringName($typeNode->type->name);
-        if ($typeName !== Query::class && $typeName !== AbstractQuery::class) {
+        $type_name = $name_scope->resolve_string_name($type_node->type->name);
+        if ($type_name !== Query::class && $type_name !== Abstract_Query::class) {
             return null;
         }
-
-        $count = count($typeNode->genericTypes);
+        $count = count($type_node->generic_types);
         if ($count !== 1) {
             return null;
         }
-
-        return new GenericObjectType(
-            $typeName,
-            [
-                new NullType(),
-                $this->typeNodeResolver->resolve($typeNode->genericTypes[0], $nameScope),
-            ],
-        );
+        return new Generic_Object_Type($type_name, [new Null_Type(), $this->type_node_resolver->resolve($type_node->generic_types[0], $name_scope)]);
     }
-
 }

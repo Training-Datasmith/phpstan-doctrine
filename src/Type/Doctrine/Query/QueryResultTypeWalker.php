@@ -1,31 +1,26 @@
 <?php
 
-declare(strict_types=1);
-
-namespace PHPStan\Type\Doctrine\Query;
+declare (strict_types=1);
+namespace Php_Stan\Type\Doctrine\Query;
 
 use function array_key_exists;
 use function array_map;
 use function array_values;
 use function assert;
-
-use BackedEnum;
-
+use Backed_Enum;
 use function class_exists;
 use function count;
-
-use Doctrine\DBAL\Types\EnumType as DbalEnumType;
-use Doctrine\DBAL\Types\StringType as DbalStringType;
+use Doctrine\DBAL\Types\Enum_Type as DbalEnumType;
+use Doctrine\DBAL\Types\String_Type as DbalStringType;
 use Doctrine\DBAL\Types\Type as DbalType;
-use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\Mapping\ClassMetadata;
+use Doctrine\ORM\Entity_Manager_Interface;
+use Doctrine\ORM\Mapping\Class_Metadata;
 use Doctrine\ORM\Query;
 use Doctrine\ORM\Query\AST;
-use Doctrine\ORM\Query\AST\TypedExpression;
+use Doctrine\ORM\Query\AST\Typed_Expression;
 use Doctrine\ORM\Query\Parser;
-use Doctrine\ORM\Query\ParserResult;
-use Doctrine\ORM\Query\SqlWalker;
-
+use Doctrine\ORM\Query\Parser_Result;
+use Doctrine\ORM\Query\Sql_Walker;
 use function get_class;
 use function gettype;
 use function in_array;
@@ -34,40 +29,38 @@ use function is_int;
 use function is_numeric;
 use function is_object;
 use function is_string;
-
 use PDO;
-use PHPStan\Doctrine\Driver\DriverDetector;
-use PHPStan\Php\PhpVersion;
-use PHPStan\ShouldNotHappenException;
-use PHPStan\TrinaryLogic;
-use PHPStan\Type\Accessory\AccessoryLowercaseStringType;
-use PHPStan\Type\Accessory\AccessoryNumericStringType;
-use PHPStan\Type\Accessory\AccessoryUppercaseStringType;
-use PHPStan\Type\ArrayType;
-use PHPStan\Type\BooleanType;
-use PHPStan\Type\Constant\ConstantBooleanType;
-use PHPStan\Type\Constant\ConstantFloatType;
-use PHPStan\Type\Constant\ConstantIntegerType;
-use PHPStan\Type\Constant\ConstantStringType;
-use PHPStan\Type\ConstantTypeHelper;
-use PHPStan\Type\Doctrine\DescriptorNotRegisteredException;
-use PHPStan\Type\Doctrine\DescriptorRegistry;
-use PHPStan\Type\Doctrine\Descriptors\DoctrineTypeDriverAwareDescriptor;
-use PHPStan\Type\FloatType;
-use PHPStan\Type\IntegerRangeType;
-use PHPStan\Type\IntegerType;
-use PHPStan\Type\IntersectionType;
-use PHPStan\Type\MixedType;
-use PHPStan\Type\NeverType;
-use PHPStan\Type\NullType;
-use PHPStan\Type\ObjectType;
-use PHPStan\Type\StringType;
-use PHPStan\Type\Type;
-use PHPStan\Type\TypeCombinator;
-use PHPStan\Type\TypeTraverser;
-use PHPStan\Type\TypeUtils;
-use PHPStan\Type\UnionType;
-
+use Php_Stan\Doctrine\Driver\Driver_Detector;
+use Php_Stan\Php\Php_Version;
+use Php_Stan\Should_Not_Happen_Exception;
+use Php_Stan\Trinary_Logic;
+use Php_Stan\Type\Accessory\Accessory_Lowercase_String_Type;
+use Php_Stan\Type\Accessory\Accessory_Numeric_String_Type;
+use Php_Stan\Type\Accessory\Accessory_Uppercase_String_Type;
+use Php_Stan\Type\Array_Type;
+use Php_Stan\Type\Boolean_Type;
+use Php_Stan\Type\Constant\Constant_Boolean_Type;
+use Php_Stan\Type\Constant\Constant_Float_Type;
+use Php_Stan\Type\Constant\Constant_Integer_Type;
+use Php_Stan\Type\Constant\Constant_String_Type;
+use Php_Stan\Type\Constant_Type_Helper;
+use Php_Stan\Type\Doctrine\Descriptor_Not_Registered_Exception;
+use Php_Stan\Type\Doctrine\Descriptor_Registry;
+use Php_Stan\Type\Doctrine\Descriptors\Doctrine_Type_Driver_Aware_Descriptor;
+use Php_Stan\Type\Float_Type;
+use Php_Stan\Type\Integer_Range_Type;
+use Php_Stan\Type\Integer_Type;
+use Php_Stan\Type\Intersection_Type;
+use Php_Stan\Type\Mixed_Type;
+use Php_Stan\Type\Never_Type;
+use Php_Stan\Type\Null_Type;
+use Php_Stan\Type\Object_Type;
+use Php_Stan\Type\String_Type;
+use Php_Stan\Type\Type;
+use Php_Stan\Type\Type_Combinator;
+use Php_Stan\Type\Type_Traverser;
+use Php_Stan\Type\Type_Utils;
+use Php_Stan\Type\Union_Type;
 use function serialize;
 use function sprintf;
 use function stripos;
@@ -75,7 +68,6 @@ use function strpos;
 use function strtolower;
 use function strtoupper;
 use function unserialize;
-
 /**
  * QueryResultTypeWalker is a TreeWalker that uses a QueryResultTypeBuilder to build the result type of a Query
  *
@@ -83,80 +75,56 @@ use function unserialize;
  *
  * @phpstan-import-type QueryComponent from Parser
  */
-class QueryResultTypeWalker extends SqlWalker
+class Query_Result_Type_Walker extends Sql_Walker
 {
     private const HINT_TYPE_MAPPING = self::class . '::HINT_TYPE_MAPPING';
-
     private const HINT_DESCRIPTOR_REGISTRY = self::class . '::HINT_DESCRIPTOR_REGISTRY';
-
     private const HINT_PHP_VERSION = self::class . '::HINT_PHP_VERSION';
-
     private const HINT_DRIVER_DETECTOR = self::class . '::HINT_DRIVER_DETECTOR';
-
     /**
      * Counter for generating unique scalar result.
      *
      */
-    private int $scalarResultCounter = 1;
-
+    private int $scalar_result_counter = 1;
     /**
      * Counter for generating indexes.
      *
      */
-    private int $newObjectCounter = 0;
-
+    private int $new_object_counter = 0;
     /** @var Query<mixed> */
     private Query $query;
-
-    private EntityManagerInterface $em;
-
-    private PhpVersion $phpVersion;
-
+    private Entity_Manager_Interface $em;
+    private Php_Version $php_version;
     /** @var DriverDetector::*|null */
-    private ?string $driverType;
-
+    private ?string $driver_type;
     /** @var array<mixed> */
-    private array $driverOptions;
-
+    private array $driver_options;
     /**
      * Map of all components/classes that appear in the DQL query.
      *
      * @var array<array-key,QueryComponent> $queryComponents
      */
-    private array $queryComponents;
-
+    private array $query_components;
     /** @var array<array-key,bool> */
-    private array $nullableQueryComponents;
-
-    private QueryResultTypeBuilder $typeBuilder;
-
-    private DescriptorRegistry $descriptorRegistry;
-
-    private bool $hasAggregateFunction;
-
-    private bool $hasGroupByClause;
-
+    private array $nullable_query_components;
+    private Query_Result_Type_Builder $type_builder;
+    private Descriptor_Registry $descriptor_registry;
+    private bool $has_aggregate_function;
+    private bool $has_group_by_clause;
     /**
      * @param Query<mixed> $query
      */
-    public static function walk(
-        Query $query,
-        QueryResultTypeBuilder $typeBuilder,
-        DescriptorRegistry $descriptorRegistry,
-        PhpVersion $phpVersion,
-        DriverDetector $driverDetector
-    ): void {
-        $query->setHint(Query::HINT_CUSTOM_OUTPUT_WALKER, self::class);
-        $query->setHint(Query::HINT_CUSTOM_TREE_WALKERS, [QueryAggregateFunctionDetectorTreeWalker::class]);
-        $query->setHint(self::HINT_TYPE_MAPPING, $typeBuilder);
-        $query->setHint(self::HINT_DESCRIPTOR_REGISTRY, $descriptorRegistry);
-        $query->setHint(self::HINT_PHP_VERSION, $phpVersion);
-        $query->setHint(self::HINT_DRIVER_DETECTOR, $driverDetector);
-
+    public static function walk(Query $query, Query_Result_Type_Builder $type_builder, Descriptor_Registry $descriptor_registry, Php_Version $php_version, Driver_Detector $driver_detector): void
+    {
+        $query->set_hint(Query::HINT_CUSTOM_OUTPUT_WALKER, self::class);
+        $query->set_hint(Query::HINT_CUSTOM_TREE_WALKERS, [Query_Aggregate_Function_Detector_Tree_Walker::class]);
+        $query->set_hint(self::HINT_TYPE_MAPPING, $type_builder);
+        $query->set_hint(self::HINT_DESCRIPTOR_REGISTRY, $descriptor_registry);
+        $query->set_hint(self::HINT_PHP_VERSION, $php_version);
+        $query->set_hint(self::HINT_DRIVER_DETECTOR, $driver_detector);
         $parser = new Parser($query);
         $parser->parse();
     }
-
     /**
      * {@inheritDoc}
      *
@@ -164,268 +132,187 @@ class QueryResultTypeWalker extends SqlWalker
      * @param ParserResult $parserResult
      * @param array<QueryComponent> $queryComponents
      */
-    public function __construct($query, $parserResult, array $queryComponents)
+    public function __construct($query, $parser_result, array $query_components)
     {
         $this->query = $query;
-        $this->em = $query->getEntityManager();
-        $this->queryComponents = $queryComponents;
-        $this->nullableQueryComponents = [];
-        $this->hasAggregateFunction = $query->hasHint(QueryAggregateFunctionDetectorTreeWalker::HINT_HAS_AGGREGATE_FUNCTION);
-        $this->hasGroupByClause = false;
-
+        $this->em = $query->get_entity_manager();
+        $this->query_components = $query_components;
+        $this->nullable_query_components = [];
+        $this->has_aggregate_function = $query->has_hint(Query_Aggregate_Function_Detector_Tree_Walker::HINT_HAS_AGGREGATE_FUNCTION);
+        $this->has_group_by_clause = false;
         // The object is instantiated by Doctrine\ORM\Query\Parser, so receiving
         // dependencies through the constructor is not an option. Instead, we
         // receive the dependencies via query hints.
-
-        $typeBuilder = $this->query->getHint(self::HINT_TYPE_MAPPING);
-
-        if (!$typeBuilder instanceof QueryResultTypeBuilder) {
-            throw new ShouldNotHappenException(sprintf(
-                'Expected the query hint %s to contain a %s, but got a %s',
-                self::HINT_TYPE_MAPPING,
-                QueryResultTypeBuilder::class,
-                is_object($typeBuilder) ? get_class($typeBuilder) : gettype($typeBuilder),
-            ));
+        $type_builder = $this->query->get_hint(self::HINT_TYPE_MAPPING);
+        if (!$type_builder instanceof Query_Result_Type_Builder) {
+            throw new Should_Not_Happen_Exception(sprintf('Expected the query hint %s to contain a %s, but got a %s', self::HINT_TYPE_MAPPING, Query_Result_Type_Builder::class, is_object($type_builder) ? get_class($type_builder) : gettype($type_builder)));
         }
-
-        $this->typeBuilder = $typeBuilder;
-
-        $descriptorRegistry = $this->query->getHint(self::HINT_DESCRIPTOR_REGISTRY);
-
-        if (!$descriptorRegistry instanceof DescriptorRegistry) {
-            throw new ShouldNotHappenException(sprintf(
-                'Expected the query hint %s to contain a %s, but got a %s',
-                self::HINT_DESCRIPTOR_REGISTRY,
-                DescriptorRegistry::class,
-                is_object($descriptorRegistry) ? get_class($descriptorRegistry) : gettype($descriptorRegistry),
-            ));
+        $this->type_builder = $type_builder;
+        $descriptor_registry = $this->query->get_hint(self::HINT_DESCRIPTOR_REGISTRY);
+        if (!$descriptor_registry instanceof Descriptor_Registry) {
+            throw new Should_Not_Happen_Exception(sprintf('Expected the query hint %s to contain a %s, but got a %s', self::HINT_DESCRIPTOR_REGISTRY, Descriptor_Registry::class, is_object($descriptor_registry) ? get_class($descriptor_registry) : gettype($descriptor_registry)));
         }
-
-        $this->descriptorRegistry = $descriptorRegistry;
-
-        $phpVersion = $this->query->getHint(self::HINT_PHP_VERSION);
-
-        if (!$phpVersion instanceof PhpVersion) { // @phpstan-ignore-line ignore bc promise
-            throw new ShouldNotHappenException(sprintf(
-                'Expected the query hint %s to contain a %s, but got a %s',
-                self::HINT_PHP_VERSION,
-                PhpVersion::class,
-                is_object($phpVersion) ? get_class($phpVersion) : gettype($phpVersion),
-            ));
+        $this->descriptor_registry = $descriptor_registry;
+        $php_version = $this->query->get_hint(self::HINT_PHP_VERSION);
+        if (!$php_version instanceof Php_Version) {
+            // @phpstan-ignore-line ignore bc promise
+            throw new Should_Not_Happen_Exception(sprintf('Expected the query hint %s to contain a %s, but got a %s', self::HINT_PHP_VERSION, Php_Version::class, is_object($php_version) ? get_class($php_version) : gettype($php_version)));
         }
-
-        $this->phpVersion = $phpVersion;
-
-        $driverDetector = $this->query->getHint(self::HINT_DRIVER_DETECTOR);
-
-        if (!$driverDetector instanceof DriverDetector) {
-            throw new ShouldNotHappenException(sprintf(
-                'Expected the query hint %s to contain a %s, but got a %s',
-                self::HINT_DRIVER_DETECTOR,
-                DriverDetector::class,
-                is_object($driverDetector) ? get_class($driverDetector) : gettype($driverDetector),
-            ));
+        $this->php_version = $php_version;
+        $driver_detector = $this->query->get_hint(self::HINT_DRIVER_DETECTOR);
+        if (!$driver_detector instanceof Driver_Detector) {
+            throw new Should_Not_Happen_Exception(sprintf('Expected the query hint %s to contain a %s, but got a %s', self::HINT_DRIVER_DETECTOR, Driver_Detector::class, is_object($driver_detector) ? get_class($driver_detector) : gettype($driver_detector)));
         }
-        $connection = $this->em->getConnection();
-
-        $this->driverType = $driverDetector->detect($connection);
-        $this->driverOptions = $driverDetector->detectDriverOptions($connection);
-
-        parent::__construct($query, $parserResult, $queryComponents);
+        $connection = $this->em->get_connection();
+        $this->driver_type = $driver_detector->detect($connection);
+        $this->driver_options = $driver_detector->detect_driver_options($connection);
+        parent::__construct($query, $parser_result, $query_components);
     }
-
-    public function walkSelectStatement(AST\SelectStatement $AST): string
+    public function walk_select_statement(AST\Select_Statement $AST): string
     {
-        $this->typeBuilder->setSelectQuery();
-        $this->hasGroupByClause = $AST->groupByClause !== null;
-
-        $this->walkFromClause($AST->fromClause);
-
-        foreach ($AST->selectClause->selectExpressions as $selectExpression) {
-            assert($selectExpression instanceof AST\Node);
-
-            $selectExpression->dispatch($this);
+        $this->type_builder->set_select_query();
+        $this->has_group_by_clause = $AST->group_by_clause !== null;
+        $this->walk_from_clause($AST->from_clause);
+        foreach ($AST->select_clause->select_expressions as $select_expression) {
+            assert($select_expression instanceof AST\Node);
+            $select_expression->dispatch($this);
         }
-
         return '';
     }
-
-    public function walkUpdateStatement(AST\UpdateStatement $AST): string
+    public function walk_update_statement(AST\Update_Statement $AST): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
-    public function walkDeleteStatement(AST\DeleteStatement $AST): string
+    public function walk_delete_statement(AST\Delete_Statement $AST): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param string $identVariable
      */
-    public function walkEntityIdentificationVariable($identVariable): string
+    public function walk_entity_identification_variable($ident_variable): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param string      $identificationVariable
      * @param string|null $fieldName
      */
-    public function walkIdentificationVariable($identificationVariable, $fieldName = null): string
+    public function walk_identification_variable($identification_variable, $field_name = null): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\PathExpression $pathExpr
      */
-    public function walkPathExpression($pathExpr): string
+    public function walk_path_expression($path_expr): string
     {
-        $fieldName = $pathExpr->field;
-        $dqlAlias = $pathExpr->identificationVariable;
-        $qComp = $this->queryComponents[$dqlAlias];
-        assert(property_exists($qComp, 'metadata'));
-
+        $field_name = $path_expr->field;
+        $dql_alias = $path_expr->identification_variable;
+        $q_comp = $this->query_components[$dql_alias];
+        assert(property_exists($q_comp, 'metadata'));
         /** @var ClassMetadata<object> $class */
-        $class = $qComp['metadata'];
-
-        assert($fieldName !== null);
-
-        switch ($pathExpr->type) {
-            case AST\PathExpression::TYPE_STATE_FIELD:
-                [$typeName, $enumType, $enumValues] = $this->getTypeOfField($class, $fieldName);
-
-                $nullable = $this->isQueryComponentNullable($dqlAlias)
-                    || $class->isNullable($fieldName)
-                    || $this->hasAggregateWithoutGroupBy();
-
-                $fieldType = $this->resolveDatabaseInternalType($typeName, $enumType, $enumValues, $nullable);
-
-                return $this->marshalType($fieldType);
-
-            case AST\PathExpression::TYPE_SINGLE_VALUED_ASSOCIATION:
-                if (isset($class->associationMappings[$fieldName]['inherited'])) {
+        $class = $q_comp['metadata'];
+        assert($field_name !== null);
+        switch ($path_expr->type) {
+            case AST\Path_Expression::TYPE_STATE_FIELD:
+                [$type_name, $enum_type, $enum_values] = $this->get_type_of_field($class, $field_name);
+                $nullable = $this->is_query_component_nullable($dql_alias) || $class->is_nullable($field_name) || $this->has_aggregate_without_group_by();
+                $field_type = $this->resolve_database_internal_type($type_name, $enum_type, $enum_values, $nullable);
+                return $this->marshal_type($field_type);
+            case AST\Path_Expression::TYPE_SINGLE_VALUED_ASSOCIATION:
+                if (isset($class->association_mappings[$field_name]['inherited'])) {
                     /** @var class-string $newClassName */
-                    $newClassName = $class->associationMappings[$fieldName]['inherited'];
-                    $class = $this->em->getClassMetadata($newClassName);
+                    $new_class_name = $class->association_mappings[$field_name]['inherited'];
+                    $class = $this->em->get_class_metadata($new_class_name);
                 }
-
-                $assoc = $class->associationMappings[$fieldName];
-
-                if (
-                    !$assoc['isOwningSide']
-                    || !isset($assoc['joinColumns'])
-                    || count($assoc['joinColumns']) !== 1
-                ) {
-                    throw new ShouldNotHappenException();
+                $assoc = $class->association_mappings[$field_name];
+                if (!$assoc['isOwningSide'] || !isset($assoc['joinColumns']) || count($assoc['joinColumns']) !== 1) {
+                    throw new Should_Not_Happen_Exception();
                 }
-
-                $joinColumn = $assoc['joinColumns'][0];
-
+                $join_column = $assoc['joinColumns'][0];
                 /** @var class-string $assocClassName */
-                $assocClassName = $assoc['targetEntity'];
-
-                $targetClass = $this->em->getClassMetadata($assocClassName);
-                $identifierFieldNames = $targetClass->getIdentifierFieldNames();
-
-                if (count($identifierFieldNames) !== 1) {
-                    throw new ShouldNotHappenException();
+                $assoc_class_name = $assoc['targetEntity'];
+                $target_class = $this->em->get_class_metadata($assoc_class_name);
+                $identifier_field_names = $target_class->get_identifier_field_names();
+                if (count($identifier_field_names) !== 1) {
+                    throw new Should_Not_Happen_Exception();
                 }
-
-                $targetFieldName = $identifierFieldNames[0];
-                [$typeName, $enumType, $enumValues] = $this->getTypeOfField($targetClass, $targetFieldName);
-
-                $nullable = ($joinColumn['nullable'] ?? true)
-                    || $this->hasAggregateWithoutGroupBy();
-
-                $fieldType = $this->resolveDatabaseInternalType($typeName, $enumType, $enumValues, $nullable);
-
-                return $this->marshalType($fieldType);
-
+                $target_field_name = $identifier_field_names[0];
+                [$type_name, $enum_type, $enum_values] = $this->get_type_of_field($target_class, $target_field_name);
+                $nullable = ($join_column['nullable'] ?? true) || $this->has_aggregate_without_group_by();
+                $field_type = $this->resolve_database_internal_type($type_name, $enum_type, $enum_values, $nullable);
+                return $this->marshal_type($field_type);
             default:
-                throw new ShouldNotHappenException();
+                throw new Should_Not_Happen_Exception();
         }
     }
-
     /**
      * @param AST\SelectClause $selectClause
      */
-    public function walkSelectClause($selectClause): string
+    public function walk_select_clause($select_clause): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\FromClause $fromClause
      */
-    public function walkFromClause($fromClause): string
+    public function walk_from_clause($from_clause): string
     {
-        foreach ($fromClause->identificationVariableDeclarations as $identificationVariableDecl) {
-            assert($identificationVariableDecl instanceof AST\Node);
-
-            $identificationVariableDecl->dispatch($this);
+        foreach ($from_clause->identification_variable_declarations as $identification_variable_decl) {
+            assert($identification_variable_decl instanceof AST\Node);
+            $identification_variable_decl->dispatch($this);
         }
-
         return '';
     }
-
     /**
      * @param AST\IdentificationVariableDeclaration $identificationVariableDecl
      */
-    public function walkIdentificationVariableDeclaration($identificationVariableDecl): string
+    public function walk_identification_variable_declaration($identification_variable_decl): string
     {
-        if ($identificationVariableDecl->indexBy !== null) {
-            $identificationVariableDecl->indexBy->dispatch($this);
+        if ($identification_variable_decl->index_by !== null) {
+            $identification_variable_decl->index_by->dispatch($this);
         }
-
-        foreach ($identificationVariableDecl->joins as $join) {
+        foreach ($identification_variable_decl->joins as $join) {
             assert($join instanceof AST\Node);
-
             $join->dispatch($this);
         }
-
         return '';
     }
-
     /**
      * @param AST\IndexBy $indexBy
      */
-    public function walkIndexBy($indexBy): void
+    public function walk_index_by($index_by): void
     {
-        $type = $this->unmarshalType($indexBy->singleValuedPathExpression->dispatch($this));
-        $this->typeBuilder->setIndexedBy($type);
+        $type = $this->unmarshal_type($index_by->single_valued_path_expression->dispatch($this));
+        $this->type_builder->set_indexed_by($type);
     }
-
     /**
      * @param AST\RangeVariableDeclaration $rangeVariableDeclaration
      */
-    public function walkRangeVariableDeclaration($rangeVariableDeclaration): string
+    public function walk_range_variable_declaration($range_variable_declaration): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\JoinAssociationDeclaration 								  $joinAssociationDeclaration
      * @param int                            								  $joinType
      * @param AST\ConditionalExpression|AST\Phase2OptimizableConditional|null $condExpr
      */
-    public function walkJoinAssociationDeclaration($joinAssociationDeclaration, $joinType = AST\Join::JOIN_TYPE_INNER, $condExpr = null): string
+    public function walk_join_association_declaration($join_association_declaration, $join_type = AST\Join::JOIN_TYPE_INNER, $cond_expr = null): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\Functions\FunctionNode $function
      */
-    public function walkFunction($function): string
+    public function walk_function($function): string
     {
         switch (true) {
-            case $function instanceof AST\Functions\AvgFunction:
-                return $this->marshalType($this->inferAvgFunction($function));
-
-            case $function instanceof AST\Functions\MaxFunction:
-            case $function instanceof AST\Functions\MinFunction:
+            case $function instanceof AST\Functions\Avg_Function:
+                return $this->marshal_type($this->infer_avg_function($function));
+            case $function instanceof AST\Functions\Max_Function:
+            case $function instanceof AST\Functions\Min_Function:
                 //                       mysql      sqlite   pdo_pgsql   pgsql
                 //	col_float =>         float       float      string   float
                 //  col_decimal =>       string  int|float      string  string
@@ -436,18 +323,15 @@ class QueryResultTypeWalker extends SqlWalker
                 //  MIN(col_decimal) =>  string   int|float    string   string
                 //  MIN(col_int) =>      int            int      int       int
                 //  MIN(col_bigint) =>   int            int      int       int
-
-                $exprType = $this->unmarshalType($function->getSql($this));
-                $exprType = $this->generalizeConstantType($exprType, $this->hasAggregateWithoutGroupBy());
-                return $this->marshalType($exprType); // retains underlying type
-
-            case $function instanceof AST\Functions\SumFunction:
-                return $this->marshalType($this->inferSumFunction($function));
-
-            case $function instanceof AST\Functions\CountFunction:
-                return $this->marshalType(IntegerRangeType::fromInterval(0, null));
-
-            case $function instanceof AST\Functions\AbsFunction:
+                $expr_type = $this->unmarshal_type($function->get_sql($this));
+                $expr_type = $this->generalize_constant_type($expr_type, $this->has_aggregate_without_group_by());
+                return $this->marshal_type($expr_type);
+            // retains underlying type
+            case $function instanceof AST\Functions\Sum_Function:
+                return $this->marshal_type($this->infer_sum_function($function));
+            case $function instanceof AST\Functions\Count_Function:
+                return $this->marshal_type(Integer_Range_Type::from_interval(0, null));
+            case $function instanceof AST\Functions\Abs_Function:
                 //                       mysql      sqlite     pdo_pgsql     pgsql
                 //	col_float =>         float       float        string     float
                 //  col_decimal =>       string  int|float        string    string
@@ -459,145 +343,110 @@ class QueryResultTypeWalker extends SqlWalker
                 //  ABS(col_int) =>      int           int           int       int
                 //  ABS(col_bigint) =>   int           int           int       int
                 //  ABS(col_string) =>   float        float            x         x
-
-                $exprType = $this->unmarshalType($this->walkSimpleArithmeticExpression($function->simpleArithmeticExpression));
-                $exprType = $this->castStringLiteralForFloatExpression($exprType);
-                $exprType = $this->generalizeConstantType($exprType, false);
-
-                $exprTypeNoNull = TypeCombinator::removeNull($exprType);
-                $nullable = $this->canBeNull($exprType);
-
-                if ($exprTypeNoNull->isInteger()->yes()) {
-                    $nonNegativeInt = $this->createNonNegativeInteger($nullable);
-                    return $this->marshalType($nonNegativeInt);
+                $expr_type = $this->unmarshal_type($this->walk_simple_arithmetic_expression($function->simple_arithmetic_expression));
+                $expr_type = $this->cast_string_literal_for_float_expression($expr_type);
+                $expr_type = $this->generalize_constant_type($expr_type, false);
+                $expr_type_no_null = Type_Combinator::remove_null($expr_type);
+                $nullable = $this->can_be_null($expr_type);
+                if ($expr_type_no_null->is_integer()->yes()) {
+                    $non_negative_int = $this->create_non_negative_integer($nullable);
+                    return $this->marshal_type($non_negative_int);
                 }
-
-                if ($this->containsOnlyNumericTypes($exprTypeNoNull)) {
-                    return $this->marshalType($exprType); // retains underlying type
+                if ($this->contains_only_numeric_types($expr_type_no_null)) {
+                    return $this->marshal_type($expr_type);
+                    // retains underlying type
                 }
-
-                return $this->marshalType(new MixedType());
-
-            case $function instanceof AST\Functions\BitAndFunction:
-            case $function instanceof AST\Functions\BitOrFunction:
-                $firstExprType = $this->unmarshalType($function->firstArithmetic->dispatch($this));
-                $secondExprType = $this->unmarshalType($function->secondArithmetic->dispatch($this));
-
-                $type = IntegerRangeType::fromInterval(0, null);
-                if ($this->canBeNull($firstExprType) || $this->canBeNull($secondExprType)) {
-                    $type = TypeCombinator::addNull($type);
+                return $this->marshal_type(new Mixed_Type());
+            case $function instanceof AST\Functions\Bit_And_Function:
+            case $function instanceof AST\Functions\Bit_Or_Function:
+                $first_expr_type = $this->unmarshal_type($function->first_arithmetic->dispatch($this));
+                $second_expr_type = $this->unmarshal_type($function->second_arithmetic->dispatch($this));
+                $type = Integer_Range_Type::from_interval(0, null);
+                if ($this->can_be_null($first_expr_type) || $this->can_be_null($second_expr_type)) {
+                    $type = Type_Combinator::add_null($type);
                 }
-
-                return $this->marshalType($type);
-
-            case $function instanceof AST\Functions\ConcatFunction:
-                $hasNull = false;
-
-                foreach ($function->concatExpressions as $expr) {
-                    $type = $this->unmarshalType($expr->dispatch($this));
-                    $hasNull = $hasNull || $this->canBeNull($type);
+                return $this->marshal_type($type);
+            case $function instanceof AST\Functions\Concat_Function:
+                $has_null = false;
+                foreach ($function->concat_expressions as $expr) {
+                    $type = $this->unmarshal_type($expr->dispatch($this));
+                    $has_null = $has_null || $this->can_be_null($type);
                 }
-
-                $type = new StringType();
-                if ($hasNull) {
-                    $type = TypeCombinator::addNull($type);
+                $type = new String_Type();
+                if ($has_null) {
+                    $type = Type_Combinator::add_null($type);
                 }
-
-                return $this->marshalType($type);
-
-            case $function instanceof AST\Functions\CurrentDateFunction:
-            case $function instanceof AST\Functions\CurrentTimeFunction:
-            case $function instanceof AST\Functions\CurrentTimestampFunction:
-                return $this->marshalType(new StringType());
-
-            case $function instanceof AST\Functions\DateAddFunction:
-            case $function instanceof AST\Functions\DateSubFunction:
-                $dateExprType = $this->unmarshalType($function->firstDateExpression->dispatch($this));
-                $intervalExprType = $this->unmarshalType($function->intervalExpression->dispatch($this));
-
-                $type = new StringType();
-                if ($this->canBeNull($dateExprType) || $this->canBeNull($intervalExprType)) {
-                    $type = TypeCombinator::addNull($type);
+                return $this->marshal_type($type);
+            case $function instanceof AST\Functions\Current_Date_Function:
+            case $function instanceof AST\Functions\Current_Time_Function:
+            case $function instanceof AST\Functions\Current_Timestamp_Function:
+                return $this->marshal_type(new String_Type());
+            case $function instanceof AST\Functions\Date_Add_Function:
+            case $function instanceof AST\Functions\Date_Sub_Function:
+                $date_expr_type = $this->unmarshal_type($function->first_date_expression->dispatch($this));
+                $interval_expr_type = $this->unmarshal_type($function->interval_expression->dispatch($this));
+                $type = new String_Type();
+                if ($this->can_be_null($date_expr_type) || $this->can_be_null($interval_expr_type)) {
+                    $type = Type_Combinator::add_null($type);
                 }
-
-                return $this->marshalType($type);
-
-            case $function instanceof AST\Functions\DateDiffFunction:
-                $date1ExprType = $this->unmarshalType($function->date1->dispatch($this));
-                $date2ExprType = $this->unmarshalType($function->date2->dispatch($this));
-
-                if ($this->driverType === DriverDetector::SQLITE3 || $this->driverType === DriverDetector::PDO_SQLITE) {
-                    $type = new FloatType();
+                return $this->marshal_type($type);
+            case $function instanceof AST\Functions\Date_Diff_Function:
+                $date1expr_type = $this->unmarshal_type($function->date1->dispatch($this));
+                $date2expr_type = $this->unmarshal_type($function->date2->dispatch($this));
+                if ($this->driver_type === Driver_Detector::SQLITE3 || $this->driver_type === Driver_Detector::PDO_SQLITE) {
+                    $type = new Float_Type();
                 } else {
-                    $type = new IntegerType();
+                    $type = new Integer_Type();
                 }
-
-                if ($this->canBeNull($date1ExprType) || $this->canBeNull($date2ExprType)) {
-                    $type = TypeCombinator::addNull($type);
+                if ($this->can_be_null($date1expr_type) || $this->can_be_null($date2expr_type)) {
+                    $type = Type_Combinator::add_null($type);
                 }
-
-                return $this->marshalType($type);
-
-            case $function instanceof AST\Functions\LengthFunction:
-                $stringPrimaryType = $this->unmarshalType($function->stringPrimary->dispatch($this));
-
-                $type = IntegerRangeType::fromInterval(0, null);
-                if ($this->canBeNull($stringPrimaryType)) {
-                    $type = TypeCombinator::addNull($type);
+                return $this->marshal_type($type);
+            case $function instanceof AST\Functions\Length_Function:
+                $string_primary_type = $this->unmarshal_type($function->string_primary->dispatch($this));
+                $type = Integer_Range_Type::from_interval(0, null);
+                if ($this->can_be_null($string_primary_type)) {
+                    $type = Type_Combinator::add_null($type);
                 }
-
-                return $this->marshalType($type);
-
-            case $function instanceof AST\Functions\LocateFunction:
-                $firstExprType = $this->unmarshalType($this->walkStringPrimary($function->firstStringPrimary));
-                $secondExprType = $this->unmarshalType($this->walkStringPrimary($function->secondStringPrimary));
-
-                $type = IntegerRangeType::fromInterval(0, null);
-                if ($this->canBeNull($firstExprType) || $this->canBeNull($secondExprType)) {
-                    $type = TypeCombinator::addNull($type);
+                return $this->marshal_type($type);
+            case $function instanceof AST\Functions\Locate_Function:
+                $first_expr_type = $this->unmarshal_type($this->walk_string_primary($function->first_string_primary));
+                $second_expr_type = $this->unmarshal_type($this->walk_string_primary($function->second_string_primary));
+                $type = Integer_Range_Type::from_interval(0, null);
+                if ($this->can_be_null($first_expr_type) || $this->can_be_null($second_expr_type)) {
+                    $type = Type_Combinator::add_null($type);
                 }
-
-                return $this->marshalType($type);
-
-            case $function instanceof AST\Functions\LowerFunction:
-            case $function instanceof AST\Functions\TrimFunction:
-            case $function instanceof AST\Functions\UpperFunction:
-                $stringPrimaryType = $this->unmarshalType($function->stringPrimary->dispatch($this));
-
-                $type = new StringType();
-                if ($this->canBeNull($stringPrimaryType)) {
-                    $type = TypeCombinator::addNull($type);
+                return $this->marshal_type($type);
+            case $function instanceof AST\Functions\Lower_Function:
+            case $function instanceof AST\Functions\Trim_Function:
+            case $function instanceof AST\Functions\Upper_Function:
+                $string_primary_type = $this->unmarshal_type($function->string_primary->dispatch($this));
+                $type = new String_Type();
+                if ($this->can_be_null($string_primary_type)) {
+                    $type = Type_Combinator::add_null($type);
                 }
-
-                return $this->marshalType($type);
-
-            case $function instanceof AST\Functions\ModFunction:
-                $firstExprType = $this->unmarshalType($this->walkSimpleArithmeticExpression($function->firstSimpleArithmeticExpression));
-                $secondExprType = $this->unmarshalType($this->walkSimpleArithmeticExpression($function->secondSimpleArithmeticExpression));
-
-                $union = TypeCombinator::union($firstExprType, $secondExprType);
-                $unionNoNull = TypeCombinator::removeNull($union);
-
-                if (!$unionNoNull->isInteger()->yes()) {
-                    return $this->marshalType(new MixedType()); // dont try to deal with non-integer chaos
+                return $this->marshal_type($type);
+            case $function instanceof AST\Functions\Mod_Function:
+                $first_expr_type = $this->unmarshal_type($this->walk_simple_arithmetic_expression($function->first_simple_arithmetic_expression));
+                $second_expr_type = $this->unmarshal_type($this->walk_simple_arithmetic_expression($function->second_simple_arithmetic_expression));
+                $union = Type_Combinator::union($first_expr_type, $second_expr_type);
+                $union_no_null = Type_Combinator::remove_null($union);
+                if (!$union_no_null->is_integer()->yes()) {
+                    return $this->marshal_type(new Mixed_Type());
+                    // dont try to deal with non-integer chaos
                 }
-
-                $type = IntegerRangeType::fromInterval(0, null);
-
-                if ($this->canBeNull($firstExprType) || $this->canBeNull($secondExprType)) {
-                    $type = TypeCombinator::addNull($type);
+                $type = Integer_Range_Type::from_interval(0, null);
+                if ($this->can_be_null($first_expr_type) || $this->can_be_null($second_expr_type)) {
+                    $type = Type_Combinator::add_null($type);
                 }
-
-                $isPgSql = $this->driverType === DriverDetector::PGSQL || $this->driverType === DriverDetector::PDO_PGSQL;
-                $mayBeZero = !(new ConstantIntegerType(0))->isSuperTypeOf($secondExprType)->no();
-
-                if (!$isPgSql && $mayBeZero) { // MOD(x, 0) returns NULL in non-strict platforms, fails in postgre
-                    $type = TypeCombinator::addNull($type);
+                $is_pg_sql = $this->driver_type === Driver_Detector::PGSQL || $this->driver_type === Driver_Detector::PDO_PGSQL;
+                $may_be_zero = !(new Constant_Integer_Type(0))->is_super_type_of($second_expr_type)->no();
+                if (!$is_pg_sql && $may_be_zero) {
+                    // MOD(x, 0) returns NULL in non-strict platforms, fails in postgre
+                    $type = Type_Combinator::add_null($type);
                 }
-
-                return $this->marshalType($this->generalizeConstantType($type, false));
-
-            case $function instanceof AST\Functions\SqrtFunction:
+                return $this->marshal_type($this->generalize_constant_type($type, false));
+            case $function instanceof AST\Functions\Sqrt_Function:
                 //                       mysql      sqlite       pdo_pgsql  pgsql
                 //	col_float =>         float      float        string     float
                 //  col_decimal =>       string     float|int    string     string
@@ -608,125 +457,94 @@ class QueryResultTypeWalker extends SqlWalker
                 //  SQRT(col_decimal) => float      float        string     string
                 //  SQRT(col_int) =>     float      float        string     float
                 //  SQRT(col_bigint) =>  float      float        string     float
-
-                $exprType = $this->unmarshalType($this->walkSimpleArithmeticExpression($function->simpleArithmeticExpression));
-                $exprTypeNoNull = TypeCombinator::removeNull($exprType);
-
-                if (!$this->containsOnlyNumericTypes($exprTypeNoNull)) {
-                    return $this->marshalType(new MixedType()); // dont try to deal with non-numeric args
+                $expr_type = $this->unmarshal_type($this->walk_simple_arithmetic_expression($function->simple_arithmetic_expression));
+                $expr_type_no_null = Type_Combinator::remove_null($expr_type);
+                if (!$this->contains_only_numeric_types($expr_type_no_null)) {
+                    return $this->marshal_type(new Mixed_Type());
+                    // dont try to deal with non-numeric args
                 }
-
-                if ($this->driverType === DriverDetector::MYSQLI || $this->driverType === DriverDetector::PDO_MYSQL || $this->driverType === DriverDetector::SQLITE3 || $this->driverType === DriverDetector::PDO_SQLITE) {
-                    $type = new FloatType();
-
-                    $cannotBeNegative = $exprType->isSmallerThan(new ConstantIntegerType(0), $this->phpVersion)->no();
-                    $canBeNegative = !$cannotBeNegative;
-                    if ($canBeNegative) {
-                        $type = TypeCombinator::addNull($type);
+                if ($this->driver_type === Driver_Detector::MYSQLI || $this->driver_type === Driver_Detector::PDO_MYSQL || $this->driver_type === Driver_Detector::SQLITE3 || $this->driver_type === Driver_Detector::PDO_SQLITE) {
+                    $type = new Float_Type();
+                    $cannot_be_negative = $expr_type->is_smaller_than(new Constant_Integer_Type(0), $this->php_version)->no();
+                    $can_be_negative = !$cannot_be_negative;
+                    if ($can_be_negative) {
+                        $type = Type_Combinator::add_null($type);
                     }
-
-                } elseif ($this->driverType === DriverDetector::PGSQL || $this->driverType === DriverDetector::PDO_PGSQL) {
-                    $castedExprType = $this->castStringLiteralForNumericExpression($exprTypeNoNull);
-
-                    if ($castedExprType->isInteger()->yes() || $castedExprType->isFloat()->yes()) {
-                        $type = $this->createFloat(false);
-
-                    } elseif ($castedExprType->isNumericString()->yes()) {
-                        $type = $this->createNumericString(false, $castedExprType->isLowercaseString()->yes(), $castedExprType->isUppercaseString()->yes());
-
+                } elseif ($this->driver_type === Driver_Detector::PGSQL || $this->driver_type === Driver_Detector::PDO_PGSQL) {
+                    $casted_expr_type = $this->cast_string_literal_for_numeric_expression($expr_type_no_null);
+                    if ($casted_expr_type->is_integer()->yes() || $casted_expr_type->is_float()->yes()) {
+                        $type = $this->create_float(false);
+                    } elseif ($casted_expr_type->is_numeric_string()->yes()) {
+                        $type = $this->create_numeric_string(false, $casted_expr_type->is_lowercase_string()->yes(), $casted_expr_type->is_uppercase_string()->yes());
                     } else {
-                        $type = TypeCombinator::union($this->createFloat(false), $this->createNumericString(false, false, true));
+                        $type = Type_Combinator::union($this->create_float(false), $this->create_numeric_string(false, false, true));
                     }
-
                 } else {
-                    $type = new MixedType();
+                    $type = new Mixed_Type();
                 }
-
-                if ($this->canBeNull($exprType)) {
-                    $type = TypeCombinator::addNull($type);
+                if ($this->can_be_null($expr_type)) {
+                    $type = Type_Combinator::add_null($type);
                 }
-
-                return $this->marshalType($type);
-
-            case $function instanceof AST\Functions\SubstringFunction:
-                $stringType = $this->unmarshalType($function->stringPrimary->dispatch($this));
-                $firstExprType = $this->unmarshalType($this->walkSimpleArithmeticExpression($function->firstSimpleArithmeticExpression));
-
-                if ($function->secondSimpleArithmeticExpression !== null) {
-                    $secondExprType = $this->unmarshalType($this->walkSimpleArithmeticExpression($function->secondSimpleArithmeticExpression));
+                return $this->marshal_type($type);
+            case $function instanceof AST\Functions\Substring_Function:
+                $string_type = $this->unmarshal_type($function->string_primary->dispatch($this));
+                $first_expr_type = $this->unmarshal_type($this->walk_simple_arithmetic_expression($function->first_simple_arithmetic_expression));
+                if ($function->second_simple_arithmetic_expression !== null) {
+                    $second_expr_type = $this->unmarshal_type($this->walk_simple_arithmetic_expression($function->second_simple_arithmetic_expression));
                 } else {
-                    $secondExprType = new IntegerType();
+                    $second_expr_type = new Integer_Type();
                 }
-
-                $type = new StringType();
-                if ($this->canBeNull($stringType) || $this->canBeNull($firstExprType) || $this->canBeNull($secondExprType)) {
-                    $type = TypeCombinator::addNull($type);
+                $type = new String_Type();
+                if ($this->can_be_null($string_type) || $this->can_be_null($first_expr_type) || $this->can_be_null($second_expr_type)) {
+                    $type = Type_Combinator::add_null($type);
                 }
-
-                return $this->marshalType($type);
-
-            case $function instanceof AST\Functions\IdentityFunction:
-                $dqlAlias = $function->pathExpression->identificationVariable;
-                $assocField = $function->pathExpression->field;
-                assert(is_string($assocField));
-                $queryComp = $this->queryComponents[$dqlAlias];
-                assert(property_exists($queryComp, 'metadata'));
-                $class = $queryComp['metadata'];
-                $assoc = $class->associationMappings[$assocField];
-
+                return $this->marshal_type($type);
+            case $function instanceof AST\Functions\Identity_Function:
+                $dql_alias = $function->path_expression->identification_variable;
+                $assoc_field = $function->path_expression->field;
+                assert(is_string($assoc_field));
+                $query_comp = $this->query_components[$dql_alias];
+                assert(property_exists($query_comp, 'metadata'));
+                $class = $query_comp['metadata'];
+                $assoc = $class->association_mappings[$assoc_field];
                 /** @var class-string $assocClassName */
-                $assocClassName = $assoc['targetEntity'];
-                $targetClass = $this->em->getClassMetadata($assocClassName);
-
-                if ($function->fieldMapping === null) {
-                    $identifierFieldNames = $targetClass->getIdentifierFieldNames();
-                    if (count($identifierFieldNames) === 0) {
-                        throw new ShouldNotHappenException();
+                $assoc_class_name = $assoc['targetEntity'];
+                $target_class = $this->em->get_class_metadata($assoc_class_name);
+                if ($function->field_mapping === null) {
+                    $identifier_field_names = $target_class->get_identifier_field_names();
+                    if (count($identifier_field_names) === 0) {
+                        throw new Should_Not_Happen_Exception();
                     }
-
-                    $targetFieldName = $identifierFieldNames[0];
+                    $target_field_name = $identifier_field_names[0];
                 } else {
-                    $targetFieldName = $function->fieldMapping;
+                    $target_field_name = $function->field_mapping;
                 }
-
-                $fieldMapping = $targetClass->fieldMappings[$targetFieldName] ?? null;
-                if ($fieldMapping === null) {
-                    return $this->marshalType(new MixedType());
+                $field_mapping = $target_class->field_mappings[$target_field_name] ?? null;
+                if ($field_mapping === null) {
+                    return $this->marshal_type(new Mixed_Type());
                 }
-
-                [$typeName, $enumType, $enumValues] = $this->getTypeOfField($targetClass, $targetFieldName);
-
+                [$type_name, $enum_type, $enum_values] = $this->get_type_of_field($target_class, $target_field_name);
                 if (!isset($assoc['joinColumns'])) {
-                    return $this->marshalType(new MixedType());
+                    return $this->marshal_type(new Mixed_Type());
                 }
-
-                $joinColumn = null;
-
+                $join_column = null;
                 foreach ($assoc['joinColumns'] as $item) {
-                    if ($item['referencedColumnName'] === $fieldMapping['columnName']) {
-                        $joinColumn = $item;
+                    if ($item['referencedColumnName'] === $field_mapping['columnName']) {
+                        $join_column = $item;
                         break;
                     }
                 }
-
-                if ($joinColumn === null) {
-                    return $this->marshalType(new MixedType());
+                if ($join_column === null) {
+                    return $this->marshal_type(new Mixed_Type());
                 }
-
-                $nullable = ($joinColumn['nullable'] ?? true)
-                    || $this->isQueryComponentNullable($dqlAlias)
-                    || $this->hasAggregateWithoutGroupBy();
-
-                $fieldType = $this->resolveDatabaseInternalType($typeName, $enumType, $enumValues, $nullable);
-
-                return $this->marshalType($fieldType);
-
+                $nullable = ($join_column['nullable'] ?? true) || $this->is_query_component_nullable($dql_alias) || $this->has_aggregate_without_group_by();
+                $field_type = $this->resolve_database_internal_type($type_name, $enum_type, $enum_values, $nullable);
+                return $this->marshal_type($field_type);
             default:
-                return $this->marshalType(new MixedType());
+                return $this->marshal_type(new Mixed_Type());
         }
     }
-
-    private function inferAvgFunction(AST\Functions\AvgFunction $function): Type
+    private function infer_avg_function(AST\Functions\Avg_Function $function): Type
     {
         //                       mysql      sqlite   pdo_pgsql    pgsql
         //	col_float =>         float       float      string    float
@@ -738,39 +556,30 @@ class QueryResultTypeWalker extends SqlWalker
         //  AVG(col_decimal) =>  string      float      string   string
         //  AVG(col_int) =>      string      float      string   string
         //  AVG(col_bigint) =>   string      float      string   string
-
-        $exprType = $this->unmarshalType($function->getSql($this));
-        $exprTypeNoNull = TypeCombinator::removeNull($exprType);
-        $nullable = $this->canBeNull($exprType) || $this->hasAggregateWithoutGroupBy();
-
-        if ($this->driverType === DriverDetector::SQLITE3 || $this->driverType === DriverDetector::PDO_SQLITE) {
-            return $this->createFloat($nullable);
+        $expr_type = $this->unmarshal_type($function->get_sql($this));
+        $expr_type_no_null = Type_Combinator::remove_null($expr_type);
+        $nullable = $this->can_be_null($expr_type) || $this->has_aggregate_without_group_by();
+        if ($this->driver_type === Driver_Detector::SQLITE3 || $this->driver_type === Driver_Detector::PDO_SQLITE) {
+            return $this->create_float($nullable);
         }
-
-        if ($this->driverType === DriverDetector::PDO_MYSQL || $this->driverType === DriverDetector::MYSQLI) {
-            if ($exprTypeNoNull->isInteger()->yes()) {
-                return $this->createNumericString($nullable, true, true);
+        if ($this->driver_type === Driver_Detector::PDO_MYSQL || $this->driver_type === Driver_Detector::MYSQLI) {
+            if ($expr_type_no_null->is_integer()->yes()) {
+                return $this->create_numeric_string($nullable, true, true);
             }
-
-            if ($exprTypeNoNull->isString()->yes() && !$exprTypeNoNull->isNumericString()->yes()) {
-                return $this->createFloat($nullable);
+            if ($expr_type_no_null->is_string()->yes() && !$expr_type_no_null->is_numeric_string()->yes()) {
+                return $this->create_float($nullable);
             }
-
-            return $this->generalizeConstantType($exprType, $nullable);
+            return $this->generalize_constant_type($expr_type, $nullable);
         }
-
-        if ($this->driverType === DriverDetector::PGSQL || $this->driverType === DriverDetector::PDO_PGSQL) {
-            if ($exprTypeNoNull->isInteger()->yes()) {
-                return $this->createNumericString($nullable, true, true);
+        if ($this->driver_type === Driver_Detector::PGSQL || $this->driver_type === Driver_Detector::PDO_PGSQL) {
+            if ($expr_type_no_null->is_integer()->yes()) {
+                return $this->create_numeric_string($nullable, true, true);
             }
-
-            return $this->generalizeConstantType($exprType, $nullable);
+            return $this->generalize_constant_type($expr_type, $nullable);
         }
-
-        return new MixedType();
+        return new Mixed_Type();
     }
-
-    private function inferSumFunction(AST\Functions\SumFunction $function): Type
+    private function infer_sum_function(AST\Functions\Sum_Function $function): Type
     {
         //                       mysql      sqlite   pdo_pgsql     pgsql
         //  col_float =>         float       float     string      float
@@ -782,976 +591,755 @@ class QueryResultTypeWalker extends SqlWalker
         //  SUM(col_decimal) =>  string   int|float    string     string
         //  SUM(col_int) =>      string         int       int        int
         //  SUM(col_bigint) =>   string         int    string     string
-
-        $exprType = $this->unmarshalType($function->getSql($this));
-        $exprTypeNoNull = TypeCombinator::removeNull($exprType);
-        $nullable = $this->canBeNull($exprType) || $this->hasAggregateWithoutGroupBy();
-
-        if ($this->driverType === DriverDetector::SQLITE3 || $this->driverType === DriverDetector::PDO_SQLITE) {
-            if ($exprTypeNoNull->isString()->yes() && !$exprTypeNoNull->isNumericString()->yes()) {
-                return $this->createFloat($nullable);
+        $expr_type = $this->unmarshal_type($function->get_sql($this));
+        $expr_type_no_null = Type_Combinator::remove_null($expr_type);
+        $nullable = $this->can_be_null($expr_type) || $this->has_aggregate_without_group_by();
+        if ($this->driver_type === Driver_Detector::SQLITE3 || $this->driver_type === Driver_Detector::PDO_SQLITE) {
+            if ($expr_type_no_null->is_string()->yes() && !$expr_type_no_null->is_numeric_string()->yes()) {
+                return $this->create_float($nullable);
             }
-
-            return $this->generalizeConstantType($exprType, $nullable);
+            return $this->generalize_constant_type($expr_type, $nullable);
         }
-
-        if ($this->driverType === DriverDetector::PDO_MYSQL || $this->driverType === DriverDetector::MYSQLI) {
-            if ($exprTypeNoNull->isInteger()->yes()) {
-                return $this->createNumericString($nullable, true, true);
+        if ($this->driver_type === Driver_Detector::PDO_MYSQL || $this->driver_type === Driver_Detector::MYSQLI) {
+            if ($expr_type_no_null->is_integer()->yes()) {
+                return $this->create_numeric_string($nullable, true, true);
             }
-
-            if ($exprTypeNoNull->isString()->yes() && !$exprTypeNoNull->isNumericString()->yes()) {
-                return $this->createFloat($nullable);
+            if ($expr_type_no_null->is_string()->yes() && !$expr_type_no_null->is_numeric_string()->yes()) {
+                return $this->create_float($nullable);
             }
-
-            return $this->generalizeConstantType($exprType, $nullable);
+            return $this->generalize_constant_type($expr_type, $nullable);
         }
-
-        if ($this->driverType === DriverDetector::PGSQL || $this->driverType === DriverDetector::PDO_PGSQL) {
-            if ($exprTypeNoNull->isInteger()->yes()) {
-                return TypeCombinator::union(
-                    $this->createInteger($nullable),
-                    $this->createNumericString($nullable, true, true),
-                );
+        if ($this->driver_type === Driver_Detector::PGSQL || $this->driver_type === Driver_Detector::PDO_PGSQL) {
+            if ($expr_type_no_null->is_integer()->yes()) {
+                return Type_Combinator::union($this->create_integer($nullable), $this->create_numeric_string($nullable, true, true));
             }
-
-            return $this->generalizeConstantType($exprType, $nullable);
+            return $this->generalize_constant_type($expr_type, $nullable);
         }
-
-        return new MixedType();
+        return new Mixed_Type();
     }
-
-    private function createFloat(bool $nullable): Type
+    private function create_float(bool $nullable): Type
     {
-        $float = new FloatType();
-        return $nullable ? TypeCombinator::addNull($float) : $float;
+        $float = new Float_Type();
+        return $nullable ? Type_Combinator::add_null($float) : $float;
     }
-
-    private function createFloatOrInt(bool $nullable): Type
+    private function create_float_or_int(bool $nullable): Type
     {
-        $union = TypeCombinator::union(
-            new FloatType(),
-            new IntegerType(),
-        );
-        return $nullable ? TypeCombinator::addNull($union) : $union;
+        $union = Type_Combinator::union(new Float_Type(), new Integer_Type());
+        return $nullable ? Type_Combinator::add_null($union) : $union;
     }
-
-    private function createInteger(bool $nullable): Type
+    private function create_integer(bool $nullable): Type
     {
-        $integer = new IntegerType();
-        return $nullable ? TypeCombinator::addNull($integer) : $integer;
+        $integer = new Integer_Type();
+        return $nullable ? Type_Combinator::add_null($integer) : $integer;
     }
-
-    private function createNonNegativeInteger(bool $nullable): Type
+    private function create_non_negative_integer(bool $nullable): Type
     {
-        $integer = IntegerRangeType::fromInterval(0, null);
-        return $nullable ? TypeCombinator::addNull($integer) : $integer;
+        $integer = Integer_Range_Type::from_interval(0, null);
+        return $nullable ? Type_Combinator::add_null($integer) : $integer;
     }
-
-    private function createNumericString(bool $nullable, bool $lowercase = false, bool $uppercase = false): Type
+    private function create_numeric_string(bool $nullable, bool $lowercase = false, bool $uppercase = false): Type
     {
-        $types = [
-            new StringType(),
-            new AccessoryNumericStringType(),
-        ];
+        $types = [new String_Type(), new Accessory_Numeric_String_Type()];
         if ($lowercase) {
-            $types[] = new AccessoryLowercaseStringType();
+            $types[] = new Accessory_Lowercase_String_Type();
         }
         if ($uppercase) {
-            $types[] = new AccessoryUppercaseStringType();
+            $types[] = new Accessory_Uppercase_String_Type();
         }
-
-        $numericString = new IntersectionType($types);
-
-        return $nullable ? TypeCombinator::addNull($numericString) : $numericString;
+        $numeric_string = new Intersection_Type($types);
+        return $nullable ? Type_Combinator::add_null($numeric_string) : $numeric_string;
     }
-
-    private function createString(bool $nullable, bool $lowercase = false, bool $uppercase = false): Type
+    private function create_string(bool $nullable, bool $lowercase = false, bool $uppercase = false): Type
     {
         if ($lowercase || $uppercase) {
-            $types = [
-                new StringType(),
-            ];
+            $types = [new String_Type()];
             if ($lowercase) {
-                $types[] = new AccessoryLowercaseStringType();
+                $types[] = new Accessory_Lowercase_String_Type();
             }
             if ($uppercase) {
-                $types[] = new AccessoryUppercaseStringType();
+                $types[] = new Accessory_Uppercase_String_Type();
             }
-            $string = new IntersectionType($types);
+            $string = new Intersection_Type($types);
         } else {
-            $string = new StringType();
+            $string = new String_Type();
         }
-
-        return $nullable ? TypeCombinator::addNull($string) : $string;
+        return $nullable ? Type_Combinator::add_null($string) : $string;
     }
-
-    private function containsOnlyNumericTypes(
-        Type ...$checkedTypes
-    ): bool {
-        foreach ($checkedTypes as $checkedType) {
-            if (!$this->containsOnlyTypes($checkedType, [new IntegerType(), new FloatType(), $this->createNumericString(false)])) {
+    private function contains_only_numeric_types(Type ...$checked_types): bool
+    {
+        foreach ($checked_types as $checked_type) {
+            if (!$this->contains_only_types($checked_type, [new Integer_Type(), new Float_Type(), $this->create_numeric_string(false)])) {
                 return false;
             }
         }
         return true;
     }
-
     /**
      * @param list<Type> $allowedTypes
      */
-    private function containsOnlyTypes(
-        Type $checkedType,
-        array $allowedTypes
-    ): bool {
-        $allowedType = TypeCombinator::union(...$allowedTypes);
-        return $allowedType->isSuperTypeOf($checkedType)->yes();
+    private function contains_only_types(Type $checked_type, array $allowed_types): bool
+    {
+        $allowed_type = Type_Combinator::union(...$allowed_types);
+        return $allowed_type->is_super_type_of($checked_type)->yes();
     }
-
     /**
      * E.g. to ensure SUM(1) is inferred as int, not 1
      */
-    private function generalizeConstantType(Type $type, bool $makeNullable): Type
+    private function generalize_constant_type(Type $type, bool $make_nullable): Type
     {
-        $containsNull = $this->canBeNull($type);
-        $typeNoNull = TypeCombinator::removeNull($type);
-
-        if (!$typeNoNull->isConstantScalarValue()->yes()) {
+        $contains_null = $this->can_be_null($type);
+        $type_no_null = Type_Combinator::remove_null($type);
+        if (!$type_no_null->is_constant_scalar_value()->yes()) {
             $result = $type;
-
-        } elseif ($typeNoNull->isInteger()->yes()) {
-            $result = $this->createInteger($containsNull);
-
-        } elseif ($typeNoNull->isFloat()->yes()) {
-            $result = $this->createFloat($containsNull);
-
-        } elseif ($typeNoNull->isNumericString()->yes()) {
-            $result = $this->createNumericString(
-                $containsNull,
-                $typeNoNull->isLowercaseString()->yes(),
-                $typeNoNull->isUppercaseString()->yes(),
-            );
-
-        } elseif ($typeNoNull->isString()->yes()) {
-            $result = $this->createString(
-                $containsNull,
-                $typeNoNull->isLowercaseString()->yes(),
-                $typeNoNull->isUppercaseString()->yes(),
-            );
-
+        } elseif ($type_no_null->is_integer()->yes()) {
+            $result = $this->create_integer($contains_null);
+        } elseif ($type_no_null->is_float()->yes()) {
+            $result = $this->create_float($contains_null);
+        } elseif ($type_no_null->is_numeric_string()->yes()) {
+            $result = $this->create_numeric_string($contains_null, $type_no_null->is_lowercase_string()->yes(), $type_no_null->is_uppercase_string()->yes());
+        } elseif ($type_no_null->is_string()->yes()) {
+            $result = $this->create_string($contains_null, $type_no_null->is_lowercase_string()->yes(), $type_no_null->is_uppercase_string()->yes());
         } else {
             $result = $type;
         }
-
-        return $makeNullable ? TypeCombinator::addNull($result) : $result;
+        return $make_nullable ? Type_Combinator::add_null($result) : $result;
     }
-
     /**
      * @param AST\OrderByClause $orderByClause
      */
-    public function walkOrderByClause($orderByClause): string
+    public function walk_order_by_clause($order_by_clause): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\OrderByItem $orderByItem
      */
-    public function walkOrderByItem($orderByItem): string
+    public function walk_order_by_item($order_by_item): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\HavingClause $havingClause
      */
-    public function walkHavingClause($havingClause): string
+    public function walk_having_clause($having_clause): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\Join $join
      */
-    public function walkJoin($join): string
+    public function walk_join($join): string
     {
-        $joinType = $join->joinType;
-        $joinDeclaration = $join->joinAssociationDeclaration;
-
+        $join_type = $join->join_type;
+        $join_declaration = $join->join_association_declaration;
         switch (true) {
-            case $joinDeclaration instanceof AST\RangeVariableDeclaration:
-            case $joinDeclaration instanceof AST\JoinAssociationDeclaration:
-                $dqlAlias = $joinDeclaration->aliasIdentificationVariable;
-
-                $this->nullableQueryComponents[$dqlAlias] = $joinType === AST\Join::JOIN_TYPE_LEFT || $joinType === AST\Join::JOIN_TYPE_LEFTOUTER;
-
+            case $join_declaration instanceof AST\Range_Variable_Declaration:
+            case $join_declaration instanceof AST\Join_Association_Declaration:
+                $dql_alias = $join_declaration->alias_identification_variable;
+                $this->nullable_query_components[$dql_alias] = $join_type === AST\Join::JOIN_TYPE_LEFT || $join_type === AST\Join::JOIN_TYPE_LEFTOUTER;
                 break;
         }
-
         return '';
     }
-
     /**
      * @param AST\CoalesceExpression $coalesceExpression
      */
-    public function walkCoalesceExpression($coalesceExpression): string
+    public function walk_coalesce_expression($coalesce_expression): string
     {
-        $rawTypes = [];
-        $expressionTypes = [];
-        $allTypesContainNull = true;
-
-        foreach ($coalesceExpression->scalarExpressions as $expression) {
+        $raw_types = [];
+        $expression_types = [];
+        $all_types_contain_null = true;
+        foreach ($coalesce_expression->scalar_expressions as $expression) {
             if (!$expression instanceof AST\Node) {
-                $expressionTypes[] = new MixedType();
+                $expression_types[] = new Mixed_Type();
                 continue;
             }
-
-            $rawType = $this->unmarshalType($expression->dispatch($this));
-            $rawTypes[] = $rawType;
-
-            $allTypesContainNull = $allTypesContainNull && $this->canBeNull($rawType);
-
+            $raw_type = $this->unmarshal_type($expression->dispatch($this));
+            $raw_types[] = $raw_type;
+            $all_types_contain_null = $all_types_contain_null && $this->can_be_null($raw_type);
             // Some drivers manipulate the types, lets avoid false positives by generalizing constant types
             // e.g. sqlsrv: "COALESCE returns the data type of value with the highest precedence"
             // e.g. mysql: COALESCE(1, 'foo') === '1' (undocumented? https://gist.github.com/jrunning/4535434)
-            $expressionTypes[] = $this->generalizeConstantType($rawType, false);
+            $expression_types[] = $this->generalize_constant_type($raw_type, false);
         }
-
-        $generalizedUnion = TypeCombinator::union(...$expressionTypes);
-
-        if (!$allTypesContainNull) {
-            $generalizedUnion = TypeCombinator::removeNull($generalizedUnion);
+        $generalized_union = Type_Combinator::union(...$expression_types);
+        if (!$all_types_contain_null) {
+            $generalized_union = Type_Combinator::remove_null($generalized_union);
         }
-
-        if ($this->driverType === DriverDetector::MYSQLI || $this->driverType === DriverDetector::PDO_MYSQL) {
-            return $this->marshalType(
-                $this->inferCoalesceForMySql($rawTypes, $generalizedUnion),
-            );
+        if ($this->driver_type === Driver_Detector::MYSQLI || $this->driver_type === Driver_Detector::PDO_MYSQL) {
+            return $this->marshal_type($this->infer_coalesce_for_my_sql($raw_types, $generalized_union));
         }
-
-        return $this->marshalType($generalizedUnion);
+        return $this->marshal_type($generalized_union);
     }
-
     /**
      * @param list<Type> $rawTypes
      */
-    private function inferCoalesceForMySql(array $rawTypes, Type $originalResult): Type
+    private function infer_coalesce_for_my_sql(array $raw_types, Type $original_result): Type
     {
-        $containsString = false;
-        $containsFloat = false;
-        $allIsNumericExcludingLiteralString = true;
-
-        foreach ($rawTypes as $rawType) {
-            $rawTypeNoNull = TypeCombinator::removeNull($rawType);
-            $isLiteralString = $rawTypeNoNull instanceof DqlConstantStringType && $rawTypeNoNull->getOriginLiteralType() === AST\Literal::STRING;
-
-            if (!$this->containsOnlyNumericTypes($rawTypeNoNull) || $isLiteralString) {
-                $allIsNumericExcludingLiteralString = false;
+        $contains_string = false;
+        $contains_float = false;
+        $all_is_numeric_excluding_literal_string = true;
+        foreach ($raw_types as $raw_type) {
+            $raw_type_no_null = Type_Combinator::remove_null($raw_type);
+            $is_literal_string = $raw_type_no_null instanceof Dql_Constant_String_Type && $raw_type_no_null->get_origin_literal_type() === AST\Literal::STRING;
+            if (!$this->contains_only_numeric_types($raw_type_no_null) || $is_literal_string) {
+                $all_is_numeric_excluding_literal_string = false;
             }
-
-            if ($rawTypeNoNull->isString()->yes()) {
-                $containsString = true;
+            if ($raw_type_no_null->is_string()->yes()) {
+                $contains_string = true;
             }
-
-            if (!$rawTypeNoNull->isFloat()->yes()) {
+            if (!$raw_type_no_null->is_float()->yes()) {
                 continue;
             }
-
-            $containsFloat = true;
+            $contains_float = true;
         }
-        if ($containsFloat && $allIsNumericExcludingLiteralString) {
-            return $this->simpleFloatify($originalResult);
+        if ($contains_float && $all_is_numeric_excluding_literal_string) {
+            return $this->simple_floatify($original_result);
         }
-
-        if ($containsString) {
-            return $this->simpleStringify($originalResult);
+        if ($contains_string) {
+            return $this->simple_stringify($original_result);
         }
-
-        return $originalResult;
+        return $original_result;
     }
-
     /**
      * @param AST\NullIfExpression $nullIfExpression
      */
-    public function walkNullIfExpression($nullIfExpression): string
+    public function walk_null_if_expression($null_if_expression): string
     {
-        $firstExpression = $nullIfExpression->firstExpression;
-
-        if (!$firstExpression instanceof AST\Node) {
-            return $this->marshalType(new MixedType());
+        $first_expression = $null_if_expression->first_expression;
+        if (!$first_expression instanceof AST\Node) {
+            return $this->marshal_type(new Mixed_Type());
         }
-
-        $firstType = $this->unmarshalType($firstExpression->dispatch($this));
-
+        $first_type = $this->unmarshal_type($first_expression->dispatch($this));
         // NULLIF() returns the first expression or NULL
-        $type = TypeCombinator::addNull($firstType);
-
-        return $this->marshalType($type);
+        $type = Type_Combinator::add_null($first_type);
+        return $this->marshal_type($type);
     }
-
-    public function walkGeneralCaseExpression(AST\GeneralCaseExpression $generalCaseExpression): string
+    public function walk_general_case_expression(AST\General_Case_Expression $general_case_expression): string
     {
-        $whenClauses = $generalCaseExpression->whenClauses;
-        $elseScalarExpression = $generalCaseExpression->elseScalarExpression;
+        $when_clauses = $general_case_expression->when_clauses;
+        $else_scalar_expression = $general_case_expression->else_scalar_expression;
         $types = [];
-
-        foreach ($whenClauses as $clause) {
-            if (!$clause instanceof AST\WhenClause) {
-                $types[] = new MixedType();
+        foreach ($when_clauses as $clause) {
+            if (!$clause instanceof AST\When_Clause) {
+                $types[] = new Mixed_Type();
                 continue;
             }
-
-            $thenScalarExpression = $clause->thenScalarExpression;
-            if (!$thenScalarExpression instanceof AST\Node) {
-                $types[] = new MixedType();
+            $then_scalar_expression = $clause->then_scalar_expression;
+            if (!$then_scalar_expression instanceof AST\Node) {
+                $types[] = new Mixed_Type();
                 continue;
             }
-
-            $types[] = $this->unmarshalType(
-                $thenScalarExpression->dispatch($this),
-            );
+            $types[] = $this->unmarshal_type($then_scalar_expression->dispatch($this));
         }
-
-        if ($elseScalarExpression instanceof AST\Node) {
-            $types[] = $this->unmarshalType(
-                $elseScalarExpression->dispatch($this),
-            );
+        if ($else_scalar_expression instanceof AST\Node) {
+            $types[] = $this->unmarshal_type($else_scalar_expression->dispatch($this));
         }
-
-        $type = TypeCombinator::union(...$types);
-
-        return $this->marshalType($type);
+        $type = Type_Combinator::union(...$types);
+        return $this->marshal_type($type);
     }
-
     /**
      * @param AST\SimpleCaseExpression $simpleCaseExpression
      */
-    public function walkSimpleCaseExpression($simpleCaseExpression): string
+    public function walk_simple_case_expression($simple_case_expression): string
     {
-        $whenClauses = $simpleCaseExpression->simpleWhenClauses;
-        $elseScalarExpression = $simpleCaseExpression->elseScalarExpression;
+        $when_clauses = $simple_case_expression->simple_when_clauses;
+        $else_scalar_expression = $simple_case_expression->else_scalar_expression;
         $types = [];
-
-        foreach ($whenClauses as $clause) {
-            if (!$clause instanceof AST\SimpleWhenClause) {
-                $types[] = new MixedType();
+        foreach ($when_clauses as $clause) {
+            if (!$clause instanceof AST\Simple_When_Clause) {
+                $types[] = new Mixed_Type();
                 continue;
             }
-
-            $thenScalarExpression = $clause->thenScalarExpression;
-            if (!$thenScalarExpression instanceof AST\Node) {
-                $types[] = new MixedType();
+            $then_scalar_expression = $clause->then_scalar_expression;
+            if (!$then_scalar_expression instanceof AST\Node) {
+                $types[] = new Mixed_Type();
                 continue;
             }
-
-            $types[] = $this->unmarshalType(
-                $thenScalarExpression->dispatch($this),
-            );
+            $types[] = $this->unmarshal_type($then_scalar_expression->dispatch($this));
         }
-
-        if ($elseScalarExpression instanceof AST\Node) {
-            $types[] = $this->unmarshalType(
-                $elseScalarExpression->dispatch($this),
-            );
+        if ($else_scalar_expression instanceof AST\Node) {
+            $types[] = $this->unmarshal_type($else_scalar_expression->dispatch($this));
         }
-
-        $type = TypeCombinator::union(...$types);
-
-        return $this->marshalType($type);
+        $type = Type_Combinator::union(...$types);
+        return $this->marshal_type($type);
     }
-
     /**
      * @param AST\SelectExpression $selectExpression
      */
-    public function walkSelectExpression($selectExpression): string
+    public function walk_select_expression($select_expression): string
     {
-        $expr = $selectExpression->expression;
-        $hidden = $selectExpression->hiddenAliasResultVariable;
-
+        $expr = $select_expression->expression;
+        $hidden = $select_expression->hidden_alias_result_variable;
         if ($hidden) {
             return '';
         }
-
         if (is_string($expr)) {
-            $dqlAlias = $expr;
-            $queryComp = $this->queryComponents[$dqlAlias];
-            assert(property_exists($queryComp, 'metadata'));
-            $class = $queryComp['metadata'];
-            $resultAlias = $selectExpression->fieldIdentificationVariable ?? $dqlAlias;
-
-            assert(array_key_exists('parent', $queryComp));
-            if ($queryComp['parent'] !== null) {
+            $dql_alias = $expr;
+            $query_comp = $this->query_components[$dql_alias];
+            assert(property_exists($query_comp, 'metadata'));
+            $class = $query_comp['metadata'];
+            $result_alias = $select_expression->field_identification_variable ?? $dql_alias;
+            assert(array_key_exists('parent', $query_comp));
+            if ($query_comp['parent'] !== null) {
                 return '';
             }
-
-            $type = new ObjectType($class->name);
-
-            if ($this->isQueryComponentNullable($dqlAlias) || $this->hasAggregateWithoutGroupBy()) {
-                $type = TypeCombinator::addNull($type);
+            $type = new Object_Type($class->name);
+            if ($this->is_query_component_nullable($dql_alias) || $this->has_aggregate_without_group_by()) {
+                $type = Type_Combinator::add_null($type);
             }
-
-            $this->typeBuilder->addEntity($resultAlias, $type, $selectExpression->fieldIdentificationVariable);
-
+            $this->type_builder->add_entity($result_alias, $type, $select_expression->field_identification_variable);
             return '';
         }
-
-        if ($expr instanceof AST\PathExpression) {
-            assert($expr->type === AST\PathExpression::TYPE_STATE_FIELD);
-
-            $fieldName = $expr->field;
-
-            assert($fieldName !== null);
-
-            $resultAlias = $selectExpression->fieldIdentificationVariable ?? $fieldName;
-
-            $dqlAlias = $expr->identificationVariable;
-            $qComp = $this->queryComponents[$dqlAlias];
-            assert(property_exists($qComp, 'metadata'));
-            $class = $qComp['metadata'];
-
-            [$typeName, $enumType, $enumValues] = $this->getTypeOfField($class, $fieldName);
-
-            $nullable = $this->isQueryComponentNullable($dqlAlias)
-                || $class->isNullable($fieldName)
-                || $this->hasAggregateWithoutGroupBy();
-
-            $type = $this->resolveDoctrineType($typeName, $enumType, $enumValues, $nullable);
-
-            $this->typeBuilder->addScalar($resultAlias, $type);
-
+        if ($expr instanceof AST\Path_Expression) {
+            assert($expr->type === AST\Path_Expression::TYPE_STATE_FIELD);
+            $field_name = $expr->field;
+            assert($field_name !== null);
+            $result_alias = $select_expression->field_identification_variable ?? $field_name;
+            $dql_alias = $expr->identification_variable;
+            $q_comp = $this->query_components[$dql_alias];
+            assert(property_exists($q_comp, 'metadata'));
+            $class = $q_comp['metadata'];
+            [$type_name, $enum_type, $enum_values] = $this->get_type_of_field($class, $field_name);
+            $nullable = $this->is_query_component_nullable($dql_alias) || $class->is_nullable($field_name) || $this->has_aggregate_without_group_by();
+            $type = $this->resolve_doctrine_type($type_name, $enum_type, $enum_values, $nullable);
+            $this->type_builder->add_scalar($result_alias, $type);
             return '';
         }
-
-        if ($expr instanceof AST\NewObjectExpression) {
-            $resultAlias = $selectExpression->fieldIdentificationVariable ?? $this->newObjectCounter++;
-
-            $type = $this->unmarshalType($this->walkNewObject($expr));
-            $this->typeBuilder->addNewObject($resultAlias, $type);
-
+        if ($expr instanceof AST\New_Object_Expression) {
+            $result_alias = $select_expression->field_identification_variable ?? $this->new_object_counter++;
+            $type = $this->unmarshal_type($this->walk_new_object($expr));
+            $this->type_builder->add_new_object($result_alias, $type);
             return '';
         }
-
         if ($expr instanceof AST\Node) {
-            $resultAlias = $selectExpression->fieldIdentificationVariable ?? $this->scalarResultCounter++;
-            $type = $this->unmarshalType($expr->dispatch($this));
-
-            if (
-                $expr instanceof TypedExpression
-                && !$expr->getReturnType() instanceof DbalStringType // StringType is no-op, so using TypedExpression with that does nothing
-                && !$expr->getReturnType() instanceof DbalEnumType // EnumType is also no-op
-            ) {
-                $dbalTypeName = DbalType::getTypeRegistry()->lookupName($expr->getReturnType());
-                $type = TypeCombinator::intersect( // e.g. count is typed as int, but we infer int<0, max>
+            $result_alias = $select_expression->field_identification_variable ?? $this->scalar_result_counter++;
+            $type = $this->unmarshal_type($expr->dispatch($this));
+            if ($expr instanceof Typed_Expression && !$expr->get_return_type() instanceof Dbal_String_Type && !$expr->get_return_type() instanceof Dbal_Enum_Type) {
+                $dbal_type_name = Dbal_Type::get_type_registry()->lookup_name($expr->get_return_type());
+                $type = Type_Combinator::intersect(
+                    // e.g. count is typed as int, but we infer int<0, max>
                     $type,
-                    $this->resolveDoctrineType($dbalTypeName, null, null, TypeCombinator::containsNull($type)),
+                    $this->resolve_doctrine_type($dbal_type_name, null, null, Type_Combinator::contains_null($type))
                 );
-
-                if ($this->hasAggregateWithoutGroupBy() && !$expr instanceof AST\Functions\CountFunction) {
-                    $type = TypeCombinator::addNull($type);
+                if ($this->has_aggregate_without_group_by() && !$expr instanceof AST\Functions\Count_Function) {
+                    $type = Type_Combinator::add_null($type);
                 }
-
             } else {
                 // Expressions default to Doctrine's StringType, whose
                 // convertToPHPValue() is a no-op. So the actual type depends on
                 // the driver and PHP version.
-
-                $type = TypeTraverser::map($type, function (Type $type, callable $traverse): Type {
-                    if ($type instanceof UnionType || $type instanceof IntersectionType) {
+                $type = Type_Traverser::map($type, function (Type $type, callable $traverse): Type {
+                    if ($type instanceof Union_Type || $type instanceof Intersection_Type) {
                         return $traverse($type);
                     }
-
-                    if ($type instanceof IntegerType) {
-                        $stringify = $this->shouldStringifyExpressions($type);
+                    if ($type instanceof Integer_Type) {
+                        $stringify = $this->should_stringify_expressions($type);
                         if ($stringify->yes()) {
-                            return $type->toString();
+                            return $type->to_string();
                         }
-
                         if ($stringify->maybe()) {
-                            return TypeCombinator::union($type->toString(), $type);
+                            return Type_Combinator::union($type->to_string(), $type);
                         }
-
                         return $type;
                     }
-
-                    if ($type instanceof FloatType) {
-                        $stringify = $this->shouldStringifyExpressions($type);
-
+                    if ($type instanceof Float_Type) {
+                        $stringify = $this->should_stringify_expressions($type);
                         // e.g. 1.0 on sqlite results to '1' with pdo_stringify on PHP 8.1, but '1.0' on PHP 8.0 with no setup
                         // so we relax constant types and return just numeric-string to avoid those issues
-                        $stringifiedFloat = $this->createNumericString(false, false, true);
+                        $stringified_float = $this->create_numeric_string(false, false, true);
                         if ($stringify->yes()) {
-                            return $stringifiedFloat;
+                            return $stringified_float;
                         }
-
                         if ($stringify->maybe()) {
-                            return TypeCombinator::union($stringifiedFloat, $type);
+                            return Type_Combinator::union($stringified_float, $type);
                         }
-
                         return $type;
                     }
-
-                    if ($type instanceof BooleanType) {
-                        $stringify = $this->shouldStringifyExpressions($type);
+                    if ($type instanceof Boolean_Type) {
+                        $stringify = $this->should_stringify_expressions($type);
                         if ($stringify->yes()) {
-                            return $type->toInteger()->toString();
+                            return $type->to_integer()->to_string();
                         }
-
                         if ($stringify->maybe()) {
-                            return TypeCombinator::union($type->toInteger()->toString(), $type);
+                            return Type_Combinator::union($type->to_integer()->to_string(), $type);
                         }
-
                         return $type;
                     }
                     return $traverse($type);
                 });
-
-                if (!$this->isSupportedDriver()) {
-                    $type = new MixedType(); // avoid guessing for unsupported drivers, there are too many differences
+                if (!$this->is_supported_driver()) {
+                    $type = new Mixed_Type();
+                    // avoid guessing for unsupported drivers, there are too many differences
                 }
             }
-
-            $this->typeBuilder->addScalar($resultAlias, $type);
-
+            $this->type_builder->add_scalar($result_alias, $type);
             return '';
         }
-
         return '';
     }
-
     /**
      * @param AST\QuantifiedExpression $qExpr
      */
-    public function walkQuantifiedExpression($qExpr): string
+    public function walk_quantified_expression($q_expr): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\Subselect $subselect
      */
-    public function walkSubselect($subselect): string
+    public function walk_subselect($subselect): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\SubselectFromClause $subselectFromClause
      */
-    public function walkSubselectFromClause($subselectFromClause): string
+    public function walk_subselect_from_clause($subselect_from_clause): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\SimpleSelectClause $simpleSelectClause
      */
-    public function walkSimpleSelectClause($simpleSelectClause): string
+    public function walk_simple_select_clause($simple_select_clause): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
-    public function walkParenthesisExpression(AST\ParenthesisExpression $parenthesisExpression): string
+    public function walk_parenthesis_expression(AST\Parenthesis_Expression $parenthesis_expression): string
     {
-        return $parenthesisExpression->expression->dispatch($this);
+        return $parenthesis_expression->expression->dispatch($this);
     }
-
     /**
      * @param AST\NewObjectExpression $newObjectExpression
      * @param string|null             $newObjectResultAlias
      */
-    public function walkNewObject($newObjectExpression, $newObjectResultAlias = null): string
+    public function walk_new_object($new_object_expression, $new_object_result_alias = null): string
     {
-        for ($i = 0; $i < count($newObjectExpression->args); $i++) {
-            $this->scalarResultCounter++;
+        for ($i = 0; $i < count($new_object_expression->args); $i++) {
+            $this->scalar_result_counter++;
         }
-
-        $type = new ObjectType($newObjectExpression->className);
-
-        return $this->marshalType($type);
+        $type = new Object_Type($new_object_expression->class_name);
+        return $this->marshal_type($type);
     }
-
     /**
      * @param AST\SimpleSelectExpression $simpleSelectExpression
      */
-    public function walkSimpleSelectExpression($simpleSelectExpression): string
+    public function walk_simple_select_expression($simple_select_expression): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\AggregateExpression $aggExpression
      */
-    public function walkAggregateExpression($aggExpression): string
+    public function walk_aggregate_expression($agg_expression): string
     {
-        switch (strtoupper($aggExpression->functionName)) {
+        switch (strtoupper($agg_expression->function_name)) {
             case 'AVG':
             case 'SUM':
-                $type = $this->unmarshalType($this->walkSimpleArithmeticExpression($aggExpression->pathExpression));
-                $type = $this->castStringLiteralForNumericExpression($type);
-                return $this->marshalType($type);
-
+                $type = $this->unmarshal_type($this->walk_simple_arithmetic_expression($agg_expression->path_expression));
+                $type = $this->cast_string_literal_for_numeric_expression($type);
+                return $this->marshal_type($type);
             case 'MAX':
             case 'MIN':
-                return $this->walkSimpleArithmeticExpression($aggExpression->pathExpression);
-
+                return $this->walk_simple_arithmetic_expression($agg_expression->path_expression);
             case 'COUNT':
-                return $this->marshalType(IntegerRangeType::fromInterval(0, null));
-
+                return $this->marshal_type(Integer_Range_Type::from_interval(0, null));
             default:
-                return $this->marshalType(new MixedType());
+                return $this->marshal_type(new Mixed_Type());
         }
     }
-
-    private function castStringLiteralForFloatExpression(Type $type): Type
+    private function cast_string_literal_for_float_expression(Type $type): Type
     {
-        if (!$type instanceof DqlConstantStringType || $type->getOriginLiteralType() !== AST\Literal::STRING) {
+        if (!$type instanceof Dql_Constant_String_Type || $type->get_origin_literal_type() !== AST\Literal::STRING) {
             return $type;
         }
-
-        $value = $type->getValue();
-
+        $value = $type->get_value();
         if (is_numeric($value)) {
-            return new ConstantFloatType((float) $value);
+            return new Constant_Float_Type((float) $value);
         }
-
         return $type;
     }
-
     /**
      * Numeric strings are kept as strings in literal usage, but casted to numeric value once used in numeric expression
      *  - SELECT '1'     => '1'
      *  - SELECT 1 * '1' => 1
      */
-    private function castStringLiteralForNumericExpression(Type $type): Type
+    private function cast_string_literal_for_numeric_expression(Type $type): Type
     {
-        if (!$type instanceof DqlConstantStringType || $type->getOriginLiteralType() !== AST\Literal::STRING) {
+        if (!$type instanceof Dql_Constant_String_Type || $type->get_origin_literal_type() !== AST\Literal::STRING) {
             return $type;
         }
-
-        $isMysql = $this->driverType === DriverDetector::MYSQLI || $this->driverType === DriverDetector::PDO_MYSQL;
-        $value = $type->getValue();
-
+        $is_mysql = $this->driver_type === Driver_Detector::MYSQLI || $this->driver_type === Driver_Detector::PDO_MYSQL;
+        $value = $type->get_value();
         if (is_numeric($value)) {
-            if (strpos($value, '.') === false && strpos($value, 'e') === false && !$isMysql) {
-                return new ConstantIntegerType((int) $value);
+            if (strpos($value, '.') === false && strpos($value, 'e') === false && !$is_mysql) {
+                return new Constant_Integer_Type((int) $value);
             }
-
-            return new ConstantFloatType((float) $value);
+            return new Constant_Float_Type((float) $value);
         }
-
         return $type;
     }
-
     /**
      * @param AST\GroupByClause $groupByClause
      */
-    public function walkGroupByClause($groupByClause): string
+    public function walk_group_by_clause($group_by_clause): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\PathExpression|string $groupByItem
      */
-    public function walkGroupByItem($groupByItem): string
+    public function walk_group_by_item($group_by_item): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
-    public function walkDeleteClause(AST\DeleteClause $deleteClause): string
+    public function walk_delete_clause(AST\Delete_Clause $delete_clause): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\UpdateClause $updateClause
      */
-    public function walkUpdateClause($updateClause): string
+    public function walk_update_clause($update_clause): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\UpdateItem $updateItem
      */
-    public function walkUpdateItem($updateItem): string
+    public function walk_update_item($update_item): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\WhereClause|null $whereClause
      */
-    public function walkWhereClause($whereClause): string
+    public function walk_where_clause($where_clause): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\ConditionalExpression|AST\Phase2OptimizableConditional $condExpr
      */
-    public function walkConditionalExpression($condExpr): string
+    public function walk_conditional_expression($cond_expr): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\ConditionalTerm|AST\ConditionalPrimary|AST\ConditionalFactor $condTerm
      */
-    public function walkConditionalTerm($condTerm): string
+    public function walk_conditional_term($cond_term): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\ConditionalFactor|AST\ConditionalPrimary $factor
      */
-    public function walkConditionalFactor($factor): string
+    public function walk_conditional_factor($factor): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\ConditionalPrimary $primary
      */
-    public function walkConditionalPrimary($primary): string
+    public function walk_conditional_primary($primary): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\ExistsExpression $existsExpr
      */
-    public function walkExistsExpression($existsExpr): string
+    public function walk_exists_expression($exists_expr): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\CollectionMemberExpression $collMemberExpr
      */
-    public function walkCollectionMemberExpression($collMemberExpr): string
+    public function walk_collection_member_expression($coll_member_expr): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\EmptyCollectionComparisonExpression $emptyCollCompExpr
      */
-    public function walkEmptyCollectionComparisonExpression($emptyCollCompExpr): string
+    public function walk_empty_collection_comparison_expression($empty_coll_comp_expr): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\NullComparisonExpression $nullCompExpr
      */
-    public function walkNullComparisonExpression($nullCompExpr): string
+    public function walk_null_comparison_expression($null_comp_expr): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param mixed $inExpr
      */
-    public function walkInExpression($inExpr): string
+    public function walk_in_expression($in_expr): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\InstanceOfExpression $instanceOfExpr
      */
-    public function walkInstanceOfExpression($instanceOfExpr): string
+    public function walk_instance_of_expression($instance_of_expr): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param mixed $inParam
      */
-    public function walkInParameter($inParam): string
+    public function walk_in_parameter($in_param): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\Literal $literal
      */
-    public function walkLiteral($literal): string
+    public function walk_literal($literal): string
     {
         switch ($literal->type) {
             case AST\Literal::STRING:
                 $value = $literal->value;
                 assert(is_string($value));
-                $type = new DqlConstantStringType($value, $literal->type);
+                $type = new Dql_Constant_String_Type($value, $literal->type);
                 break;
-
             case AST\Literal::BOOLEAN:
                 $value = strtolower($literal->value) === 'true';
-                if ($this->driverType === DriverDetector::PDO_PGSQL || $this->driverType === DriverDetector::PGSQL) {
-                    $type = new ConstantBooleanType($value);
+                if ($this->driver_type === Driver_Detector::PDO_PGSQL || $this->driver_type === Driver_Detector::PGSQL) {
+                    $type = new Constant_Boolean_Type($value);
                 } else {
-                    $type = new ConstantIntegerType($value ? 1 : 0);
+                    $type = new Constant_Integer_Type($value ? 1 : 0);
                 }
                 break;
-
             case AST\Literal::NUMERIC:
                 $value = $literal->value;
-                assert(is_int($value) || is_string($value)); // ensured in parser
-
-                if (is_int($value) || (strpos($value, '.') === false && strpos($value, 'e') === false)) {
-                    $type = new ConstantIntegerType((int) $value);
-
-                } else {
-                    if ($this->driverType === DriverDetector::PDO_MYSQL || $this->driverType === DriverDetector::MYSQLI) {
-                        // both pdo_mysql and mysqli hydrates decimal literal (e.g. 123.4) as string no matter the configuration (e.g. PDO::ATTR_STRINGIFY_FETCHES being false) and PHP version
-                        // the only way to force float is to use float literal with scientific notation (e.g. 123.4e0)
-                        // https://dev.mysql.com/doc/refman/8.0/en/number-literals.html
-
-                        if (stripos($value, 'e') !== false) {
-                            $type = new ConstantFloatType((float) $value);
-                        } else {
-                            $type = new DqlConstantStringType($value, $literal->type);
-                        }
-                    } elseif ($this->driverType === DriverDetector::PGSQL || $this->driverType === DriverDetector::PDO_PGSQL) {
-                        if (stripos($value, 'e') !== false) {
-                            $type = new DqlConstantStringType((string) (float) $value, $literal->type);
-                        } else {
-                            $type = new DqlConstantStringType($value, $literal->type);
-                        }
-
+                assert(is_int($value) || is_string($value));
+                // ensured in parser
+                if (is_int($value) || strpos($value, '.') === false && strpos($value, 'e') === false) {
+                    $type = new Constant_Integer_Type((int) $value);
+                } else if ($this->driver_type === Driver_Detector::PDO_MYSQL || $this->driver_type === Driver_Detector::MYSQLI) {
+                    // both pdo_mysql and mysqli hydrates decimal literal (e.g. 123.4) as string no matter the configuration (e.g. PDO::ATTR_STRINGIFY_FETCHES being false) and PHP version
+                    // the only way to force float is to use float literal with scientific notation (e.g. 123.4e0)
+                    // https://dev.mysql.com/doc/refman/8.0/en/number-literals.html
+                    if (stripos($value, 'e') !== false) {
+                        $type = new Constant_Float_Type((float) $value);
                     } else {
-                        $type = new ConstantFloatType((float) $value);
+                        $type = new Dql_Constant_String_Type($value, $literal->type);
                     }
+                } elseif ($this->driver_type === Driver_Detector::PGSQL || $this->driver_type === Driver_Detector::PDO_PGSQL) {
+                    if (stripos($value, 'e') !== false) {
+                        $type = new Dql_Constant_String_Type((string) (float) $value, $literal->type);
+                    } else {
+                        $type = new Dql_Constant_String_Type($value, $literal->type);
+                    }
+                } else {
+                    $type = new Constant_Float_Type((float) $value);
                 }
-
                 break;
-
             default:
-                $type = new MixedType();
+                $type = new Mixed_Type();
                 break;
         }
-
-        return $this->marshalType($type);
+        return $this->marshal_type($type);
     }
-
     /**
      * @param AST\BetweenExpression $betweenExpr
      */
-    public function walkBetweenExpression($betweenExpr): string
+    public function walk_between_expression($between_expr): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\LikeExpression $likeExpr
      */
-    public function walkLikeExpression($likeExpr): string
+    public function walk_like_expression($like_expr): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\PathExpression $stateFieldPathExpression
      */
-    public function walkStateFieldPathExpression($stateFieldPathExpression): string
+    public function walk_state_field_path_expression($state_field_path_expression): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\ComparisonExpression $compExpr
      */
-    public function walkComparisonExpression($compExpr): string
+    public function walk_comparison_expression($comp_expr): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\InputParameter $inputParam
      */
-    public function walkInputParameter($inputParam): string
+    public function walk_input_parameter($input_param): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\ArithmeticExpression $arithmeticExpr
      */
-    public function walkArithmeticExpression($arithmeticExpr): string
+    public function walk_arithmetic_expression($arithmetic_expr): string
     {
-        if ($arithmeticExpr->simpleArithmeticExpression !== null) {
-            return $this->walkSimpleArithmeticExpression($arithmeticExpr->simpleArithmeticExpression);
+        if ($arithmetic_expr->simple_arithmetic_expression !== null) {
+            return $this->walk_simple_arithmetic_expression($arithmetic_expr->simple_arithmetic_expression);
         }
-
-        if ($arithmeticExpr->subselect !== null) {
-            return $arithmeticExpr->subselect->dispatch($this);
+        if ($arithmetic_expr->subselect !== null) {
+            return $arithmetic_expr->subselect->dispatch($this);
         }
-
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param AST\Node|string $simpleArithmeticExpr
      */
-    public function walkSimpleArithmeticExpression($simpleArithmeticExpr): string
+    public function walk_simple_arithmetic_expression($simple_arithmetic_expr): string
     {
-        if (!$simpleArithmeticExpr instanceof AST\SimpleArithmeticExpression) {
-            return $this->walkArithmeticTerm($simpleArithmeticExpr);
+        if (!$simple_arithmetic_expr instanceof AST\Simple_Arithmetic_Expression) {
+            return $this->walk_arithmetic_term($simple_arithmetic_expr);
         }
-
         $types = [];
-
-        foreach ($simpleArithmeticExpr->arithmeticTerms as $term) {
+        foreach ($simple_arithmetic_expr->arithmetic_terms as $term) {
             if (!$term instanceof AST\Node) {
                 // Skip '+' or '-'
                 continue;
             }
-
-            $types[] = $this->castStringLiteralForNumericExpression(
-                $this->unmarshalType($this->walkArithmeticPrimary($term)),
-            );
+            $types[] = $this->cast_string_literal_for_numeric_expression($this->unmarshal_type($this->walk_arithmetic_primary($term)));
         }
-
-        return $this->marshalType($this->inferPlusMinusTimesType($types));
+        return $this->marshal_type($this->infer_plus_minus_times_type($types));
     }
-
     /**
      * @param mixed $term
      */
-    public function walkArithmeticTerm($term): string
+    public function walk_arithmetic_term($term): string
     {
-        if (!$term instanceof AST\ArithmeticTerm) {
-            return $this->walkArithmeticFactor($term);
+        if (!$term instanceof AST\Arithmetic_Term) {
+            return $this->walk_arithmetic_factor($term);
         }
-
         $types = [];
         $operators = [];
-
-        foreach ($term->arithmeticFactors as $factor) {
+        foreach ($term->arithmetic_factors as $factor) {
             if (!$factor instanceof AST\Node) {
                 assert(is_string($factor));
                 $operators[$factor] = $factor;
-                continue; // Skip '*' or '/'
+                continue;
+                // Skip '*' or '/'
             }
-
-            $types[] = $this->castStringLiteralForNumericExpression(
-                $this->unmarshalType($this->walkArithmeticPrimary($factor)),
-            );
+            $types[] = $this->cast_string_literal_for_numeric_expression($this->unmarshal_type($this->walk_arithmetic_primary($factor)));
         }
-
         if (array_values($operators) === ['*']) {
-            return $this->marshalType($this->inferPlusMinusTimesType($types));
+            return $this->marshal_type($this->infer_plus_minus_times_type($types));
         }
-
-        return $this->marshalType($this->inferDivisionType($types));
+        return $this->marshal_type($this->infer_division_type($types));
     }
-
     /**
      * @param list<Type> $termTypes
      */
-    private function inferPlusMinusTimesType(array $termTypes): Type
+    private function infer_plus_minus_times_type(array $term_types): Type
     {
         //                             mysql        sqlite     pdo_pgsql  pgsql
         // col_float                   float        float      string     float
@@ -1774,63 +1362,47 @@ class QueryResultTypeWalker extends SqlWalker
         // col_decimal + col_string    float        float|int  x          x
         // col_float + col_bool        float        float      x          x
         // col_decimal + col_bool      string       float|int  x          x
-
         $types = [];
-        $typesNoNull = [];
-
-        foreach ($termTypes as $termType) {
-            $generalizedType = $this->generalizeConstantType($termType, false);
-            $types[] = $generalizedType;
-            $typesNoNull[] = TypeCombinator::removeNull($generalizedType);
+        $types_no_null = [];
+        foreach ($term_types as $term_type) {
+            $generalized_type = $this->generalize_constant_type($term_type, false);
+            $types[] = $generalized_type;
+            $types_no_null[] = Type_Combinator::remove_null($generalized_type);
         }
-
-        $union = TypeCombinator::union(...$types);
-        $nullable = $this->canBeNull($union);
-        $unionWithoutNull = TypeCombinator::removeNull($union);
-
-        if ($unionWithoutNull->isInteger()->yes()) {
-            return $this->createInteger($nullable);
+        $union = Type_Combinator::union(...$types);
+        $nullable = $this->can_be_null($union);
+        $union_without_null = Type_Combinator::remove_null($union);
+        if ($union_without_null->is_integer()->yes()) {
+            return $this->create_integer($nullable);
         }
-
-        if ($this->driverType === DriverDetector::SQLITE3 || $this->driverType === DriverDetector::PDO_SQLITE) {
-            if (!$this->containsOnlyNumericTypes(...$typesNoNull)) {
-                return new MixedType();
+        if ($this->driver_type === Driver_Detector::SQLITE3 || $this->driver_type === Driver_Detector::PDO_SQLITE) {
+            if (!$this->contains_only_numeric_types(...$types_no_null)) {
+                return new Mixed_Type();
             }
-
-            foreach ($typesNoNull as $typeNoNull) {
-                if ($typeNoNull->isFloat()->yes()) {
-                    return $this->createFloat($nullable);
+            foreach ($types_no_null as $type_no_null) {
+                if ($type_no_null->is_float()->yes()) {
+                    return $this->create_float($nullable);
                 }
             }
-
-            return $this->createFloatOrInt($nullable);
+            return $this->create_float_or_int($nullable);
         }
-
-        if ($this->driverType === DriverDetector::MYSQLI || $this->driverType === DriverDetector::PDO_MYSQL || $this->driverType === DriverDetector::PGSQL || $this->driverType === DriverDetector::PDO_PGSQL) {
-            if ($this->containsOnlyTypes($unionWithoutNull, [new IntegerType(), new FloatType()])) {
-                return $this->createFloat($nullable);
+        if ($this->driver_type === Driver_Detector::MYSQLI || $this->driver_type === Driver_Detector::PDO_MYSQL || $this->driver_type === Driver_Detector::PGSQL || $this->driver_type === Driver_Detector::PDO_PGSQL) {
+            if ($this->contains_only_types($union_without_null, [new Integer_Type(), new Float_Type()])) {
+                return $this->create_float($nullable);
             }
-
-            if ($this->containsOnlyTypes($unionWithoutNull, [new IntegerType(), $this->createNumericString(false)])) {
-                return $this->createNumericString(
-                    $nullable,
-                    $unionWithoutNull->toString()->isLowercaseString()->yes(),
-                    $unionWithoutNull->toString()->isUppercaseString()->yes(),
-                );
+            if ($this->contains_only_types($union_without_null, [new Integer_Type(), $this->create_numeric_string(false)])) {
+                return $this->create_numeric_string($nullable, $union_without_null->to_string()->is_lowercase_string()->yes(), $union_without_null->to_string()->is_uppercase_string()->yes());
             }
-
-            if ($this->containsOnlyNumericTypes($unionWithoutNull)) {
-                return $this->createFloat($nullable);
+            if ($this->contains_only_numeric_types($union_without_null)) {
+                return $this->create_float($nullable);
             }
         }
-
-        return new MixedType();
+        return new Mixed_Type();
     }
-
     /**
      * @param list<Type> $termTypes
      */
-    private function inferDivisionType(array $termTypes): Type
+    private function infer_division_type(array $term_types): Type
     {
         //                            mysql      sqlite    pdo_pgsql     pgsql
         // col_float =>               float      float     string        float
@@ -1852,299 +1424,221 @@ class QueryResultTypeWalker extends SqlWalker
         // col_decimal / col_string   null       null      x             x
         // col_float / col_bool       float      float     x             x
         // col_decimal / col_bool     string     float     x             x
-
         $types = [];
-        $typesNoNull = [];
-
-        foreach ($termTypes as $termType) {
-            $generalizedType = $this->generalizeConstantType($termType, false);
-            $types[] = $generalizedType;
-            $typesNoNull[] = TypeCombinator::removeNull($generalizedType);
+        $types_no_null = [];
+        foreach ($term_types as $term_type) {
+            $generalized_type = $this->generalize_constant_type($term_type, false);
+            $types[] = $generalized_type;
+            $types_no_null[] = Type_Combinator::remove_null($generalized_type);
         }
-
-        $union = TypeCombinator::union(...$types);
-        $nullable = $this->canBeNull($union);
-        $unionWithoutNull = TypeCombinator::removeNull($union);
-
-        if ($unionWithoutNull->isInteger()->yes()) {
-            if ($this->driverType === DriverDetector::MYSQLI || $this->driverType === DriverDetector::PDO_MYSQL) {
-                return $this->createNumericString($nullable, true, true);
+        $union = Type_Combinator::union(...$types);
+        $nullable = $this->can_be_null($union);
+        $union_without_null = Type_Combinator::remove_null($union);
+        if ($union_without_null->is_integer()->yes()) {
+            if ($this->driver_type === Driver_Detector::MYSQLI || $this->driver_type === Driver_Detector::PDO_MYSQL) {
+                return $this->create_numeric_string($nullable, true, true);
             }
-            if ($this->driverType === DriverDetector::PDO_PGSQL || $this->driverType === DriverDetector::PGSQL || $this->driverType === DriverDetector::SQLITE3 || $this->driverType === DriverDetector::PDO_SQLITE) {
-                return $this->createInteger($nullable);
+            if ($this->driver_type === Driver_Detector::PDO_PGSQL || $this->driver_type === Driver_Detector::PGSQL || $this->driver_type === Driver_Detector::SQLITE3 || $this->driver_type === Driver_Detector::PDO_SQLITE) {
+                return $this->create_integer($nullable);
             }
-
-            return new MixedType();
+            return new Mixed_Type();
         }
-
-        if ($this->driverType === DriverDetector::SQLITE3 || $this->driverType === DriverDetector::PDO_SQLITE) {
-            if (!$this->containsOnlyNumericTypes(...$typesNoNull)) {
-                return new MixedType();
+        if ($this->driver_type === Driver_Detector::SQLITE3 || $this->driver_type === Driver_Detector::PDO_SQLITE) {
+            if (!$this->contains_only_numeric_types(...$types_no_null)) {
+                return new Mixed_Type();
             }
-
-            foreach ($typesNoNull as $typeNoNull) {
-                if ($typeNoNull->isFloat()->yes()) {
-                    return $this->createFloat($nullable);
+            foreach ($types_no_null as $type_no_null) {
+                if ($type_no_null->is_float()->yes()) {
+                    return $this->create_float($nullable);
                 }
             }
-
-            return $this->createFloatOrInt($nullable);
+            return $this->create_float_or_int($nullable);
         }
-
-        if ($this->driverType === DriverDetector::MYSQLI || $this->driverType === DriverDetector::PDO_MYSQL || $this->driverType === DriverDetector::PGSQL || $this->driverType === DriverDetector::PDO_PGSQL) {
-            if ($this->containsOnlyTypes($unionWithoutNull, [new IntegerType(), new FloatType()])) {
-                return $this->createFloat($nullable);
+        if ($this->driver_type === Driver_Detector::MYSQLI || $this->driver_type === Driver_Detector::PDO_MYSQL || $this->driver_type === Driver_Detector::PGSQL || $this->driver_type === Driver_Detector::PDO_PGSQL) {
+            if ($this->contains_only_types($union_without_null, [new Integer_Type(), new Float_Type()])) {
+                return $this->create_float($nullable);
             }
-
-            if ($this->containsOnlyTypes($unionWithoutNull, [new IntegerType(), $this->createNumericString(false)])) {
-                return $this->createNumericString(
-                    $nullable,
-                    $unionWithoutNull->toString()->isLowercaseString()->yes(),
-                    $unionWithoutNull->toString()->isUppercaseString()->yes(),
-                );
+            if ($this->contains_only_types($union_without_null, [new Integer_Type(), $this->create_numeric_string(false)])) {
+                return $this->create_numeric_string($nullable, $union_without_null->to_string()->is_lowercase_string()->yes(), $union_without_null->to_string()->is_uppercase_string()->yes());
             }
-
-            if ($this->containsOnlyTypes($unionWithoutNull, [new FloatType(), $this->createNumericString(false)])) {
-                return $this->createFloat($nullable);
+            if ($this->contains_only_types($union_without_null, [new Float_Type(), $this->create_numeric_string(false)])) {
+                return $this->create_float($nullable);
             }
-
-            if ($this->containsOnlyNumericTypes($unionWithoutNull)) {
-                return $this->createFloat($nullable);
+            if ($this->contains_only_numeric_types($union_without_null)) {
+                return $this->create_float($nullable);
             }
         }
-
-        return new MixedType();
+        return new Mixed_Type();
     }
-
     /**
      * @param mixed $factor
      */
-    public function walkArithmeticFactor($factor): string
+    public function walk_arithmetic_factor($factor): string
     {
-        if (!$factor instanceof AST\ArithmeticFactor) {
-            return $this->walkArithmeticPrimary($factor);
+        if (!$factor instanceof AST\Arithmetic_Factor) {
+            return $this->walk_arithmetic_primary($factor);
         }
-
-        $primary = $factor->arithmeticPrimary;
-
-        $type = $this->unmarshalType($this->walkArithmeticPrimary($primary));
-
-        if ($type instanceof ConstantIntegerType && $factor->sign === false) {
-            $type = new ConstantIntegerType($type->getValue() * -1);
-
-        } elseif ($type instanceof IntegerRangeType && $factor->sign === false) {
-            $type = IntegerRangeType::fromInterval(
-                $type->getMax() === null ? null : $type->getMax() * -1,
-                $type->getMin() === null ? null : $type->getMin() * -1,
-            );
-
-        } elseif ($type instanceof ConstantFloatType && $factor->sign === false) {
-            $type = new ConstantFloatType($type->getValue() * -1);
+        $primary = $factor->arithmetic_primary;
+        $type = $this->unmarshal_type($this->walk_arithmetic_primary($primary));
+        if ($type instanceof Constant_Integer_Type && $factor->sign === false) {
+            $type = new Constant_Integer_Type($type->get_value() * -1);
+        } elseif ($type instanceof Integer_Range_Type && $factor->sign === false) {
+            $type = Integer_Range_Type::from_interval($type->get_max() === null ? null : $type->get_max() * -1, $type->get_min() === null ? null : $type->get_min() * -1);
+        } elseif ($type instanceof Constant_Float_Type && $factor->sign === false) {
+            $type = new Constant_Float_Type($type->get_value() * -1);
         }
-
-        return $this->marshalType($type);
+        return $this->marshal_type($type);
     }
-
     /**
      * @param mixed $primary
      */
-    public function walkArithmeticPrimary($primary): string
+    public function walk_arithmetic_primary($primary): string
     {
         // ResultVariable (TODO)
         if (is_string($primary)) {
-            return $this->marshalType(new MixedType());
+            return $this->marshal_type(new Mixed_Type());
         }
-
         if ($primary instanceof AST\Node) {
             return $primary->dispatch($this);
         }
-
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param mixed $stringPrimary
      */
-    public function walkStringPrimary($stringPrimary): string
+    public function walk_string_primary($string_primary): string
     {
-        if ($stringPrimary instanceof AST\Node) {
-            return $stringPrimary->dispatch($this);
+        if ($string_primary instanceof AST\Node) {
+            return $string_primary->dispatch($this);
         }
-
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
     /**
      * @param string $resultVariable
      */
-    public function walkResultVariable($resultVariable): string
+    public function walk_result_variable($result_variable): string
     {
-        return $this->marshalType(new MixedType());
+        return $this->marshal_type(new Mixed_Type());
     }
-
-    private function unmarshalType(string $marshalledType): Type
+    private function unmarshal_type(string $marshalled_type): Type
     {
-        $type = unserialize($marshalledType);
-
+        $type = unserialize($marshalled_type);
         assert($type instanceof Type);
-
         return $type;
     }
-
-    private function marshalType(Type $type): string
+    private function marshal_type(Type $type): string
     {
         // TreeWalker methods are supposed to return string, so we need to
         // marshal the types in strings
         return serialize($type);
     }
-
-    private function isQueryComponentNullable(string $dqlAlias): bool
+    private function is_query_component_nullable(string $dql_alias): bool
     {
-        return $this->nullableQueryComponents[$dqlAlias] ?? false;
+        return $this->nullable_query_components[$dql_alias] ?? false;
     }
-
     /**
      * @param ClassMetadata<object> $class
      * @return array{string, ?class-string<BackedEnum>, ?list<string>} Doctrine type name, enum type of field, enum values
      */
-    private function getTypeOfField(ClassMetadata $class, string $fieldName): array
+    private function get_type_of_field(Class_Metadata $class, string $field_name): array
     {
-        assert(isset($class->fieldMappings[$fieldName]));
-
-        $metadata = $class->fieldMappings[$fieldName];
-
+        assert(isset($class->field_mappings[$field_name]));
+        $metadata = $class->field_mappings[$field_name];
         /** @var string $type */
         $type = $metadata['type'];
-
         /** @var class-string<BackedEnum>|null $enumType */
-        $enumType = $metadata['enumType'] ?? null;
-
-        if (!is_string($enumType) || !class_exists($enumType)) {
-            $enumType = null;
+        $enum_type = $metadata['enumType'] ?? null;
+        if (!is_string($enum_type) || !class_exists($enum_type)) {
+            $enum_type = null;
         }
-
-        return [$type, $enumType, $this->detectEnumValues($type, $metadata)];
+        return [$type, $enum_type, $this->detect_enum_values($type, $metadata)];
     }
-
     /**
      * @param mixed $metadata
      *
      * @return list<string>|null
      */
-    private function detectEnumValues(string $typeName, array $metadata): ?array
+    private function detect_enum_values(string $type_name, array $metadata): ?array
     {
-        if ($typeName !== 'enum') {
+        if ($type_name !== 'enum') {
             return null;
         }
-
         $values = $metadata['options']['values'] ?? [];
-
         if (!is_array($values) || count($values) === 0) {
             return null;
         }
-
         foreach ($values as $value) {
             if (!is_string($value)) {
                 return null;
             }
         }
-
         return array_values($values);
     }
-
     /**
      * @param ?class-string<BackedEnum> $enumType
      * @param ?list<string> $enumValues
      */
-    private function resolveDoctrineType(
-        string $typeName,
-        ?string $enumType = null,
-        ?array $enumValues = null,
-        bool $nullable = false
-    ): Type {
+    private function resolve_doctrine_type(string $type_name, ?string $enum_type = null, ?array $enum_values = null, bool $nullable = false): Type
+    {
         try {
-            $type = $this->descriptorRegistry
-                ->get($typeName)
-                ->getWritableToPropertyType();
-
-            if ($enumType !== null) {
-                if ($type->isArray()->no()) {
-                    $type = new ObjectType($enumType);
+            $type = $this->descriptor_registry->get($type_name)->get_writable_to_property_type();
+            if ($enum_type !== null) {
+                if ($type->is_array()->no()) {
+                    $type = new Object_Type($enum_type);
                 } else {
-                    $type = TypeCombinator::intersect(new ArrayType(
-                        $type->getIterableKeyType(),
-                        new ObjectType($enumType),
-                    ), ...TypeUtils::getAccessoryTypes($type));
+                    $type = Type_Combinator::intersect(new Array_Type($type->get_iterable_key_type(), new Object_Type($enum_type)), ...Type_Utils::get_accessory_types($type));
                 }
             }
-
-            if ($enumValues !== null) {
-                $enumValuesType = TypeCombinator::union(...array_map(static fn (string $value): \PHPStan\Type\Constant\ConstantStringType => new ConstantStringType($value), $enumValues));
-                $type = TypeCombinator::intersect($enumValuesType, $type);
+            if ($enum_values !== null) {
+                $enum_values_type = Type_Combinator::union(...array_map(static fn(string $value): \Php_Stan\Type\Constant\Constant_String_Type => new Constant_String_Type($value), $enum_values));
+                $type = Type_Combinator::intersect($enum_values_type, $type);
             }
-
-            if ($type instanceof NeverType) {
-                $type = new MixedType();
+            if ($type instanceof Never_Type) {
+                $type = new Mixed_Type();
             }
-        } catch (DescriptorNotRegisteredException $e) {
-            if ($enumType !== null) {
-                $type = new ObjectType($enumType);
+        } catch (Descriptor_Not_Registered_Exception $e) {
+            if ($enum_type !== null) {
+                $type = new Object_Type($enum_type);
             } else {
-                $type = new MixedType();
+                $type = new Mixed_Type();
             }
         }
-
         if ($nullable) {
-            return TypeCombinator::addNull($type);
+            return Type_Combinator::add_null($type);
         }
-
         return $type;
     }
-
     /**
      * @param ?class-string<BackedEnum> $enumType
      * @param ?list<string> $enumValues
      */
-    private function resolveDatabaseInternalType(
-        string $typeName,
-        ?string $enumType = null,
-        ?array $enumValues = null,
-        bool $nullable = false
-    ): Type {
+    private function resolve_database_internal_type(string $type_name, ?string $enum_type = null, ?array $enum_values = null, bool $nullable = false): Type
+    {
         try {
-            $descriptor = $this->descriptorRegistry->get($typeName);
-            $type = $descriptor instanceof DoctrineTypeDriverAwareDescriptor
-                ? $descriptor->getDatabaseInternalTypeForDriver($this->em->getConnection())
-                : $descriptor->getDatabaseInternalType();
-
-        } catch (DescriptorNotRegisteredException $e) {
-            $type = new MixedType();
+            $descriptor = $this->descriptor_registry->get($type_name);
+            $type = $descriptor instanceof Doctrine_Type_Driver_Aware_Descriptor ? $descriptor->get_database_internal_type_for_driver($this->em->get_connection()) : $descriptor->get_database_internal_type();
+        } catch (Descriptor_Not_Registered_Exception $e) {
+            $type = new Mixed_Type();
         }
-
-        if ($enumType !== null) {
-            $enumTypes = array_map(static fn (\BackedEnum $enumType): \PHPStan\Type\Type => ConstantTypeHelper::getTypeFromValue($enumType->value), $enumType::cases());
-            $enumType = TypeCombinator::union(...$enumTypes);
-            $enumType = TypeCombinator::union($enumType, $enumType->toString());
-            $type = TypeCombinator::intersect($enumType, $type);
+        if ($enum_type !== null) {
+            $enum_types = array_map(static fn(\Backed_Enum $enum_type): \Php_Stan\Type\Type => Constant_Type_Helper::get_type_from_value($enum_type->value), $enum_type::cases());
+            $enum_type = Type_Combinator::union(...$enum_types);
+            $enum_type = Type_Combinator::union($enum_type, $enum_type->to_string());
+            $type = Type_Combinator::intersect($enum_type, $type);
         }
-
-        if ($enumValues !== null) {
-            $enumValuesType = TypeCombinator::union(...array_map(static fn (string $value): \PHPStan\Type\Constant\ConstantStringType => new ConstantStringType($value), $enumValues));
-            $type = TypeCombinator::intersect($enumValuesType, $type);
+        if ($enum_values !== null) {
+            $enum_values_type = Type_Combinator::union(...array_map(static fn(string $value): \Php_Stan\Type\Constant\Constant_String_Type => new Constant_String_Type($value), $enum_values));
+            $type = Type_Combinator::intersect($enum_values_type, $type);
         }
-
         if ($nullable) {
-            return TypeCombinator::addNull($type);
+            return Type_Combinator::add_null($type);
         }
-
         return $type;
     }
-
-    private function canBeNull(Type $type): bool
+    private function can_be_null(Type $type): bool
     {
-        return !$type->isSuperTypeOf(new NullType())->no();
+        return !$type->is_super_type_of(new Null_Type())->no();
     }
-
     /**
      * Returns whether the query has aggregate function and no group by clause
      *
@@ -2154,11 +1648,10 @@ class QueryResultTypeWalker extends SqlWalker
      *
      * c.f. SQL92, section 7.9, General Rules
      */
-    private function hasAggregateWithoutGroupBy(): bool
+    private function has_aggregate_without_group_by(): bool
     {
-        return $this->hasAggregateFunction && !$this->hasGroupByClause;
+        return $this->has_aggregate_function && !$this->has_group_by_clause;
     }
-
     /**
      * See analysis: https://github.com/janedbal/php-database-drivers-fetch-test
      *
@@ -2172,109 +1665,80 @@ class QueryResultTypeWalker extends SqlWalker
      *
      * @param IntegerType|FloatType|BooleanType $type
      */
-    private function shouldStringifyExpressions(Type $type): TrinaryLogic
+    private function should_stringify_expressions(Type $type): Trinary_Logic
     {
-        if (in_array($this->driverType, [DriverDetector::PDO_MYSQL, DriverDetector::PDO_PGSQL, DriverDetector::PDO_SQLITE], true)) {
-            $stringifyFetches = isset($this->driverOptions[PDO::ATTR_STRINGIFY_FETCHES]) && (bool) $this->driverOptions[PDO::ATTR_STRINGIFY_FETCHES];
-
-            if ($this->driverType === DriverDetector::PDO_MYSQL) {
-                $emulatedPrepares = isset($this->driverOptions[PDO::ATTR_EMULATE_PREPARES]) ? (bool) $this->driverOptions[PDO::ATTR_EMULATE_PREPARES] : true;
-
-                if ($stringifyFetches) {
-                    return TrinaryLogic::createYes();
+        if (in_array($this->driver_type, [Driver_Detector::PDO_MYSQL, Driver_Detector::PDO_PGSQL, Driver_Detector::PDO_SQLITE], true)) {
+            $stringify_fetches = isset($this->driver_options[PDO::ATTR_STRINGIFY_FETCHES]) && (bool) $this->driver_options[PDO::ATTR_STRINGIFY_FETCHES];
+            if ($this->driver_type === Driver_Detector::PDO_MYSQL) {
+                $emulated_prepares = isset($this->driver_options[PDO::ATTR_EMULATE_PREPARES]) ? (bool) $this->driver_options[PDO::ATTR_EMULATE_PREPARES] : true;
+                if ($stringify_fetches) {
+                    return Trinary_Logic::create_yes();
                 }
-
-                if ($this->phpVersion->getVersionId() >= 80100) {
-                    return TrinaryLogic::createNo();
+                if ($this->php_version->get_version_id() >= 80100) {
+                    return Trinary_Logic::create_no();
                 }
-
-                if ($emulatedPrepares) {
-                    return TrinaryLogic::createYes();
+                if ($emulated_prepares) {
+                    return Trinary_Logic::create_yes();
                 }
-
-                return TrinaryLogic::createNo();
+                return Trinary_Logic::create_no();
             }
-
-            if ($this->driverType === DriverDetector::PDO_SQLITE) {
-                if ($stringifyFetches) {
-                    return TrinaryLogic::createYes();
+            if ($this->driver_type === Driver_Detector::PDO_SQLITE) {
+                if ($stringify_fetches) {
+                    return Trinary_Logic::create_yes();
                 }
-
-                if ($this->phpVersion->getVersionId() >= 80100) {
-                    return TrinaryLogic::createNo();
+                if ($this->php_version->get_version_id() >= 80100) {
+                    return Trinary_Logic::create_no();
                 }
-
-                return TrinaryLogic::createYes();
+                return Trinary_Logic::create_yes();
             }
-
-            if ($this->driverType === DriverDetector::PDO_PGSQL) { // @phpstan-ignore-line always true, but keep it readable
-                if ($type->isBoolean()->yes()) {
-                    if ($this->phpVersion->getVersionId() >= 80100) {
-                        return TrinaryLogic::createFromBoolean($stringifyFetches);
+            if ($this->driver_type === Driver_Detector::PDO_PGSQL) {
+                // @phpstan-ignore-line always true, but keep it readable
+                if ($type->is_boolean()->yes()) {
+                    if ($this->php_version->get_version_id() >= 80100) {
+                        return Trinary_Logic::create_from_boolean($stringify_fetches);
                     }
-
-                    return TrinaryLogic::createNo();
+                    return Trinary_Logic::create_no();
                 }
-
-                if ($type->isFloat()->yes()) {
-                    if ($this->phpVersion->getVersionId() >= 80400) {
-                        return TrinaryLogic::createFromBoolean($stringifyFetches);
+                if ($type->is_float()->yes()) {
+                    if ($this->php_version->get_version_id() >= 80400) {
+                        return Trinary_Logic::create_from_boolean($stringify_fetches);
                     }
-
-                    return TrinaryLogic::createYes();
+                    return Trinary_Logic::create_yes();
                 }
-
-                return TrinaryLogic::createFromBoolean($stringifyFetches);
+                return Trinary_Logic::create_from_boolean($stringify_fetches);
             }
         }
-
-        if ($this->driverType === DriverDetector::PGSQL || $this->driverType === DriverDetector::SQLITE3 || $this->driverType === DriverDetector::MYSQLI) {
-            return TrinaryLogic::createNo();
+        if ($this->driver_type === Driver_Detector::PGSQL || $this->driver_type === Driver_Detector::SQLITE3 || $this->driver_type === Driver_Detector::MYSQLI) {
+            return Trinary_Logic::create_no();
         }
-
-        return TrinaryLogic::createMaybe();
+        return Trinary_Logic::create_maybe();
     }
-
-    private function isSupportedDriver(): bool
+    private function is_supported_driver(): bool
     {
-        return in_array($this->driverType, [
-            DriverDetector::MYSQLI,
-            DriverDetector::PDO_MYSQL,
-            DriverDetector::PGSQL,
-            DriverDetector::PDO_PGSQL,
-            DriverDetector::SQLITE3,
-            DriverDetector::PDO_SQLITE,
-        ], true);
+        return in_array($this->driver_type, [Driver_Detector::MYSQLI, Driver_Detector::PDO_MYSQL, Driver_Detector::PGSQL, Driver_Detector::PDO_PGSQL, Driver_Detector::SQLITE3, Driver_Detector::PDO_SQLITE], true);
     }
-
-    private function simpleStringify(Type $type): Type
+    private function simple_stringify(Type $type): Type
     {
-        return TypeTraverser::map($type, static function (Type $type, callable $traverse): Type {
-            if ($type instanceof UnionType || $type instanceof IntersectionType) {
+        return Type_Traverser::map($type, static function (Type $type, callable $traverse): Type {
+            if ($type instanceof Union_Type || $type instanceof Intersection_Type) {
                 return $traverse($type);
             }
-
-            if ($type instanceof IntegerType || $type instanceof FloatType || $type instanceof BooleanType) {
-                return $type->toString();
+            if ($type instanceof Integer_Type || $type instanceof Float_Type || $type instanceof Boolean_Type) {
+                return $type->to_string();
             }
-
             return $traverse($type);
         });
     }
-
-    private function simpleFloatify(Type $type): Type
+    private function simple_floatify(Type $type): Type
     {
-        return TypeTraverser::map($type, static function (Type $type, callable $traverse): Type {
-            if ($type instanceof UnionType || $type instanceof IntersectionType) {
+        return Type_Traverser::map($type, static function (Type $type, callable $traverse): Type {
+            if ($type instanceof Union_Type || $type instanceof Intersection_Type) {
                 return $traverse($type);
             }
-
-            if ($type instanceof IntegerType || $type instanceof BooleanType || $type instanceof StringType) {
-                return $type->toFloat();
+            if ($type instanceof Integer_Type || $type instanceof Boolean_Type || $type instanceof String_Type) {
+                return $type->to_float();
             }
-
             return $traverse($type);
         });
     }
-
 }

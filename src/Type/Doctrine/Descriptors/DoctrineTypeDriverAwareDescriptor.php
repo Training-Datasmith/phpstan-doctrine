@@ -1,14 +1,12 @@
 <?php
 
-declare(strict_types=1);
-
-namespace PHPStan\Type\Doctrine\Descriptors;
+declare (strict_types=1);
+namespace Php_Stan\Type\Doctrine\Descriptors;
 
 use Doctrine\DBAL\Connection;
-use PHPStan\Type\Type;
-
+use Php_Stan\Type\Type;
 /** @api */
-interface DoctrineTypeDriverAwareDescriptor
+interface Doctrine_Type_Driver_Aware_Descriptor
 {
     /**
      * This is used for inferring how database fetches column of such type
@@ -25,6 +23,5 @@ interface DoctrineTypeDriverAwareDescriptor
      * - bigint:   int           int        int      int
      * - bool:     int           int       bool     bool
      */
-    public function getDatabaseInternalTypeForDriver(Connection $connection): Type;
-
+    public function get_database_internal_type_for_driver(Connection $connection): Type;
 }

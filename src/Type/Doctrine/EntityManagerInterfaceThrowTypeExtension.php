@@ -1,49 +1,33 @@
 <?php
 
-declare(strict_types=1);
-
-namespace PHPStan\Type\Doctrine;
+declare (strict_types=1);
+namespace Php_Stan\Type\Doctrine;
 
 use function array_map;
-
-use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
-use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\Exception\ORMException;
-use Doctrine\Persistence\ObjectManager;
-use PhpParser\Node\Expr\MethodCall;
-use PHPStan\Analyser\Scope;
-use PHPStan\Reflection\MethodReflection;
-use PHPStan\Type\DynamicMethodThrowTypeExtension;
-use PHPStan\Type\ObjectType;
-use PHPStan\Type\Type;
-use PHPStan\Type\TypeCombinator;
-
-class EntityManagerInterfaceThrowTypeExtension implements DynamicMethodThrowTypeExtension
+use Doctrine\DBAL\Exception\Unique_Constraint_Violation_Exception;
+use Doctrine\ORM\Entity_Manager_Interface;
+use Doctrine\ORM\Exception\Orm_Exception;
+use Doctrine\Persistence\Object_Manager;
+use Php_Parser\Node\Expr\Method_Call;
+use Php_Stan\Analyser\Scope;
+use Php_Stan\Reflection\Method_Reflection;
+use Php_Stan\Type\Dynamic_Method_Throw_Type_Extension;
+use Php_Stan\Type\Object_Type;
+use Php_Stan\Type\Type;
+use Php_Stan\Type\Type_Combinator;
+class Entity_Manager_Interface_Throw_Type_Extension implements Dynamic_Method_Throw_Type_Extension
 {
-    public const SUPPORTED_METHOD = [
-        'flush' => [
-            ORMException::class,
-            UniqueConstraintViolationException::class,
-        ],
-    ];
-
-    public function isMethodSupported(MethodReflection $methodReflection): bool
+    public const SUPPORTED_METHOD = ['flush' => [Orm_Exception::class, Unique_Constraint_Violation_Exception::class]];
+    public function is_method_supported(Method_Reflection $method_reflection): bool
     {
-        return $methodReflection->getDeclaringClass()->getName() === ObjectManager::class
-            && isset(self::SUPPORTED_METHOD[$methodReflection->getName()]);
+        return $method_reflection->get_declaring_class()->get_name() === Object_Manager::class && isset(self::SUPPORTED_METHOD[$method_reflection->get_name()]);
     }
-
-    public function getThrowTypeFromMethodCall(MethodReflection $methodReflection, MethodCall $methodCall, Scope $scope): ?Type
+    public function get_throw_type_from_method_call(Method_Reflection $method_reflection, Method_Call $method_call, Scope $scope): ?Type
     {
-        $type = $scope->getType($methodCall->var);
-
-        if ((new ObjectType(EntityManagerInterface::class))->isSuperTypeOf($type)->yes()) {
-            return TypeCombinator::union(
-                ...array_map(static fn (string $class): Type => new ObjectType($class), self::SUPPORTED_METHOD[$methodReflection->getName()]),
-            );
+        $type = $scope->get_type($method_call->var);
+        if ((new Object_Type(Entity_Manager_Interface::class))->is_super_type_of($type)->yes()) {
+            return Type_Combinator::union(...array_map(static fn(string $class): Type => new Object_Type($class), self::SUPPORTED_METHOD[$method_reflection->get_name()]));
         }
-
-        return $methodReflection->getThrowType();
+        return $method_reflection->get_throw_type();
     }
-
 }

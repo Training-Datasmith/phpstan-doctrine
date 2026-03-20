@@ -1,49 +1,39 @@
 <?php
 
-declare(strict_types=1);
-
-namespace PHPStan\Type\Doctrine\QueryBuilder;
+declare (strict_types=1);
+namespace Php_Stan\Type\Doctrine\Query_Builder;
 
 use function array_keys;
 use function count;
-
-use PHPStan\Type\IsSuperTypeOfResult;
-use PHPStan\Type\Type;
-
-class BranchingQueryBuilderType extends QueryBuilderType
+use Php_Stan\Type\Is_Super_Type_Of_Result;
+use Php_Stan\Type\Type;
+class Branching_Query_Builder_Type extends Query_Builder_Type
 {
     public function equals(Type $type): bool
     {
         if ($type instanceof parent) {
-            if (count($this->getMethodCalls()) !== count($type->getMethodCalls())) {
+            if (count($this->get_method_calls()) !== count($type->get_method_calls())) {
                 return false;
             }
-
-            foreach (array_keys($this->getMethodCalls()) as $id) {
-                if (!isset($type->getMethodCalls()[$id])) {
+            foreach (array_keys($this->get_method_calls()) as $id) {
+                if (!isset($type->get_method_calls()[$id])) {
                     return false;
                 }
             }
-
-            foreach (array_keys($type->getMethodCalls()) as $id) {
-                if (!isset($this->getMethodCalls()[$id])) {
+            foreach (array_keys($type->get_method_calls()) as $id) {
+                if (!isset($this->get_method_calls()[$id])) {
                     return false;
                 }
             }
-
             return true;
         }
-
         return parent::equals($type);
     }
-
-    public function isSuperTypeOf(Type $type): IsSuperTypeOfResult
+    public function is_super_type_of(Type $type): Is_Super_Type_Of_Result
     {
         if ($type instanceof parent) {
-            return IsSuperTypeOfResult::createFromBoolean($this->equals($type));
+            return Is_Super_Type_Of_Result::create_from_boolean($this->equals($type));
         }
-
-        return parent::isSuperTypeOf($type);
+        return parent::is_super_type_of($type);
     }
-
 }

@@ -1,33 +1,26 @@
 <?php
 
-declare(strict_types=1);
+declare (strict_types=1);
+namespace Php_Stan\Reflection\Doctrine;
 
-namespace PHPStan\Reflection\Doctrine;
-
-use PHPStan\Reflection\ClassReflection;
-use PHPStan\Reflection\MethodReflection;
-use PHPStan\Reflection\MethodsClassReflectionExtension;
-use PHPStan\Reflection\ReflectionProvider;
-
-class DoctrineSelectableClassReflectionExtension implements MethodsClassReflectionExtension
+use Php_Stan\Reflection\Class_Reflection;
+use Php_Stan\Reflection\Method_Reflection;
+use Php_Stan\Reflection\Methods_Class_Reflection_Extension;
+use Php_Stan\Reflection\Reflection_Provider;
+class Doctrine_Selectable_Class_Reflection_Extension implements Methods_Class_Reflection_Extension
 {
-    private ReflectionProvider $reflectionProvider;
-
-    public function __construct(ReflectionProvider $reflectionProvider)
+    private Reflection_Provider $reflection_provider;
+    public function __construct(Reflection_Provider $reflection_provider)
     {
-        $this->reflectionProvider = $reflectionProvider;
+        $this->reflection_provider = $reflection_provider;
     }
-
-    public function hasMethod(ClassReflection $classReflection, string $methodName): bool
+    public function has_method(Class_Reflection $class_reflection, string $method_name): bool
     {
-        return $classReflection->getName() === 'Doctrine\Common\Collections\Collection'
-            && $methodName === 'matching';
+        return $class_reflection->get_name() === 'Doctrine\Common\Collections\Collection' && $method_name === 'matching';
     }
-
-    public function getMethod(ClassReflection $classReflection, string $methodName): MethodReflection
+    public function get_method(Class_Reflection $class_reflection, string $method_name): Method_Reflection
     {
-        $selectableReflection = $this->reflectionProvider->getClass('Doctrine\Common\Collections\Selectable');
-        return $selectableReflection->getNativeMethod($methodName);
+        $selectable_reflection = $this->reflection_provider->get_class('Doctrine\Common\Collections\Selectable');
+        return $selectable_reflection->get_native_method($method_name);
     }
-
 }

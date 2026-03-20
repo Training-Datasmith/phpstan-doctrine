@@ -1,214 +1,151 @@
 <?php
 
-declare(strict_types=1);
-
-namespace PHPStan\Type\Doctrine\QueryBuilder;
+declare (strict_types=1);
+namespace Php_Stan\Type\Doctrine\Query_Builder;
 
 use function array_slice;
-
 use AssertionError;
-
 use function count;
-
-use Doctrine\Common\CommonException;
-use Doctrine\DBAL\DBALException;
-use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\ORMException;
-use Doctrine\Persistence\Mapping\MappingException;
-
+use Doctrine\Common\Common_Exception;
+use Doctrine\DBAL\Dbal_Exception;
+use Doctrine\ORM\Entity_Manager_Interface;
+use Doctrine\ORM\Orm_Exception;
+use Doctrine\Persistence\Mapping\Mapping_Exception;
 use function in_array;
 use function method_exists;
-
-use PhpParser\Node\Expr\MethodCall;
-use PhpParser\Node\Identifier;
-use PHPStan\Analyser\Scope;
-use PHPStan\Doctrine\Driver\DriverDetector;
-use PHPStan\Php\PhpVersion;
-use PHPStan\Reflection\MethodReflection;
-use PHPStan\Rules\Doctrine\ORM\DynamicQueryBuilderArgumentException;
-use PHPStan\Type\Doctrine\ArgumentsProcessor;
-use PHPStan\Type\Doctrine\DescriptorRegistry;
-use PHPStan\Type\Doctrine\DoctrineTypeUtils;
-use PHPStan\Type\Doctrine\ObjectMetadataResolver;
-use PHPStan\Type\Doctrine\Query\QueryResultTypeBuilder;
-use PHPStan\Type\Doctrine\Query\QueryResultTypeWalker;
-use PHPStan\Type\Doctrine\Query\QueryType;
-use PHPStan\Type\DynamicMethodReturnTypeExtension;
-use PHPStan\Type\Type;
-use PHPStan\Type\TypeCombinator;
-
+use Php_Parser\Node\Expr\Method_Call;
+use Php_Parser\Node\Identifier;
+use Php_Stan\Analyser\Scope;
+use Php_Stan\Doctrine\Driver\Driver_Detector;
+use Php_Stan\Php\Php_Version;
+use Php_Stan\Reflection\Method_Reflection;
+use Php_Stan\Rules\Doctrine\ORM\Dynamic_Query_Builder_Argument_Exception;
+use Php_Stan\Type\Doctrine\Arguments_Processor;
+use Php_Stan\Type\Doctrine\Descriptor_Registry;
+use Php_Stan\Type\Doctrine\Doctrine_Type_Utils;
+use Php_Stan\Type\Doctrine\Object_Metadata_Resolver;
+use Php_Stan\Type\Doctrine\Query\Query_Result_Type_Builder;
+use Php_Stan\Type\Doctrine\Query\Query_Result_Type_Walker;
+use Php_Stan\Type\Doctrine\Query\Query_Type;
+use Php_Stan\Type\Dynamic_Method_Return_Type_Extension;
+use Php_Stan\Type\Type;
+use Php_Stan\Type\Type_Combinator;
 use function strtolower;
-
 use Throwable;
-
-class QueryBuilderGetQueryDynamicReturnTypeExtension implements DynamicMethodReturnTypeExtension
+class Query_Builder_Get_Query_Dynamic_Return_Type_Extension implements Dynamic_Method_Return_Type_Extension
 {
     /**
      * Those are critical methods where we need to understand arguments passed to them, the rest is allowed to be more dynamic
      * - this list reflects what is implemented in QueryResultTypeWalker
      */
-    private const METHODS_NOT_AFFECTING_RESULT_TYPE = [
-        'where',
-        'andwhere',
-        'orwhere',
-        'setparameter',
-        'setparameters',
-        'addcriteria',
-        'addorderby',
-        'orderby',
-        'addgroupby',
-        'groupby',
-        'having',
-        'andhaving',
-        'orhaving',
-    ];
-
-    private ObjectMetadataResolver $objectMetadataResolver;
-
-    private ArgumentsProcessor $argumentsProcessor;
-
+    private const METHODS_NOT_AFFECTING_RESULT_TYPE = ['where', 'andwhere', 'orwhere', 'setparameter', 'setparameters', 'addcriteria', 'addorderby', 'orderby', 'addgroupby', 'groupby', 'having', 'andhaving', 'orhaving'];
+    private Object_Metadata_Resolver $object_metadata_resolver;
+    private Arguments_Processor $arguments_processor;
     /** @var class-string|null */
-    private ?string $queryBuilderClass = null;
-
-    private DescriptorRegistry $descriptorRegistry;
-
-    private PhpVersion $phpVersion;
-
-    private DriverDetector $driverDetector;
-
+    private ?string $query_builder_class = null;
+    private Descriptor_Registry $descriptor_registry;
+    private Php_Version $php_version;
+    private Driver_Detector $driver_detector;
     /**
      * @param class-string|null $queryBuilderClass
      */
-    public function __construct(
-        ObjectMetadataResolver $objectMetadataResolver,
-        ArgumentsProcessor $argumentsProcessor,
-        ?string $queryBuilderClass,
-        DescriptorRegistry $descriptorRegistry,
-        PhpVersion $phpVersion,
-        DriverDetector $driverDetector
-    ) {
-        $this->objectMetadataResolver = $objectMetadataResolver;
-        $this->argumentsProcessor = $argumentsProcessor;
-        $this->queryBuilderClass = $queryBuilderClass;
-        $this->descriptorRegistry = $descriptorRegistry;
-        $this->phpVersion = $phpVersion;
-        $this->driverDetector = $driverDetector;
-    }
-
-    public function getClass(): string
+    public function __construct(Object_Metadata_Resolver $object_metadata_resolver, Arguments_Processor $arguments_processor, ?string $query_builder_class, Descriptor_Registry $descriptor_registry, Php_Version $php_version, Driver_Detector $driver_detector)
     {
-        return $this->queryBuilderClass ?? 'Doctrine\ORM\QueryBuilder';
+        $this->object_metadata_resolver = $object_metadata_resolver;
+        $this->arguments_processor = $arguments_processor;
+        $this->query_builder_class = $query_builder_class;
+        $this->descriptor_registry = $descriptor_registry;
+        $this->php_version = $php_version;
+        $this->driver_detector = $driver_detector;
     }
-
-    public function isMethodSupported(MethodReflection $methodReflection): bool
+    public function get_class(): string
     {
-        return $methodReflection->getName() === 'getQuery';
+        return $this->query_builder_class ?? 'Doctrine\ORM\QueryBuilder';
     }
-
-    public function getTypeFromMethodCall(
-        MethodReflection $methodReflection,
-        MethodCall $methodCall,
-        Scope $scope
-    ): ?Type {
-        $calledOnType = $scope->getType($methodCall->var);
-
-        $queryBuilderTypes = DoctrineTypeUtils::getQueryBuilderTypes($calledOnType);
-        if (count($queryBuilderTypes) === 0) {
+    public function is_method_supported(Method_Reflection $method_reflection): bool
+    {
+        return $method_reflection->get_name() === 'getQuery';
+    }
+    public function get_type_from_method_call(Method_Reflection $method_reflection, Method_Call $method_call, Scope $scope): ?Type
+    {
+        $called_on_type = $scope->get_type($method_call->var);
+        $query_builder_types = Doctrine_Type_Utils::get_query_builder_types($called_on_type);
+        if (count($query_builder_types) === 0) {
             return null;
         }
-
-        $objectManager = $this->objectMetadataResolver->getObjectManager();
-        if ($objectManager === null) {
+        $object_manager = $this->object_metadata_resolver->get_object_manager();
+        if ($object_manager === null) {
             return null;
         }
-        $entityManagerInterface = 'Doctrine\ORM\EntityManagerInterface';
-        if (!$objectManager instanceof $entityManagerInterface) {
+        $entity_manager_interface = 'Doctrine\ORM\EntityManagerInterface';
+        if (!$object_manager instanceof $entity_manager_interface) {
             return null;
         }
-
-        $resultTypes = [];
-        foreach ($queryBuilderTypes as $queryBuilderType) {
-            $queryBuilder = $objectManager->createQueryBuilder();
-
-            foreach ($queryBuilderType->getMethodCalls() as $calledMethodCall) {
-                if (!$calledMethodCall->name instanceof Identifier) {
+        $result_types = [];
+        foreach ($query_builder_types as $query_builder_type) {
+            $query_builder = $object_manager->create_query_builder();
+            foreach ($query_builder_type->get_method_calls() as $called_method_call) {
+                if (!$called_method_call->name instanceof Identifier) {
                     continue;
                 }
-
-                $methodName = $calledMethodCall->name->toString();
-                $lowerMethodName = strtolower($methodName);
-                if (in_array($lowerMethodName, [
-                    'setparameter',
-                    'setparameters',
-                ], true)) {
+                $method_name = $called_method_call->name->to_string();
+                $lower_method_name = strtolower($method_name);
+                if (in_array($lower_method_name, ['setparameter', 'setparameters'], true)) {
                     continue;
                 }
-
-                if ($lowerMethodName === 'setfirstresult') {
-                    $queryBuilder->setFirstResult(0);
+                if ($lower_method_name === 'setfirstresult') {
+                    $query_builder->set_first_result(0);
                     continue;
                 }
-
-                if ($lowerMethodName === 'setmaxresults') {
-                    $queryBuilder->setMaxResults(10);
+                if ($lower_method_name === 'setmaxresults') {
+                    $query_builder->set_max_results(10);
                     continue;
                 }
-
-                if ($lowerMethodName === 'set') {
+                if ($lower_method_name === 'set') {
                     try {
-                        $args = $this->argumentsProcessor->processArgs($scope, $methodName, array_slice($calledMethodCall->getArgs(), 0, 1));
-                    } catch (DynamicQueryBuilderArgumentException $e) {
+                        $args = $this->arguments_processor->process_args($scope, $method_name, array_slice($called_method_call->get_args(), 0, 1));
+                    } catch (Dynamic_Query_Builder_Argument_Exception $e) {
                         return null;
                     }
                     if (count($args) === 1) {
-                        $queryBuilder->set($args[0], $args[0]);
+                        $query_builder->set($args[0], $args[0]);
                         continue;
                     }
                 }
-
-                if (!method_exists($queryBuilder, $methodName)) {
+                if (!method_exists($query_builder, $method_name)) {
                     continue;
                 }
-
                 try {
-                    $args = $this->argumentsProcessor->processArgs($scope, $methodName, $calledMethodCall->getArgs());
-                } catch (DynamicQueryBuilderArgumentException $e) {
-                    if (in_array($lowerMethodName, self::METHODS_NOT_AFFECTING_RESULT_TYPE, true)) {
+                    $args = $this->arguments_processor->process_args($scope, $method_name, $called_method_call->get_args());
+                } catch (Dynamic_Query_Builder_Argument_Exception $e) {
+                    if (in_array($lower_method_name, self::METHODS_NOT_AFFECTING_RESULT_TYPE, true)) {
                         continue;
                     }
                     return null;
                 }
-
                 try {
-                    $queryBuilder->{$methodName}(...$args);
+                    $query_builder->{$method_name}(...$args);
                 } catch (Throwable $e) {
                     return null;
                 }
             }
-
-            $resultTypes[] = $this->getQueryType($queryBuilder->getDQL());
+            $result_types[] = $this->get_query_type($query_builder->get_dql());
         }
-
-        return TypeCombinator::union(...$resultTypes);
+        return Type_Combinator::union(...$result_types);
     }
-
-    private function getQueryType(string $dql): Type
+    private function get_query_type(string $dql): Type
     {
-        $em = $this->objectMetadataResolver->getObjectManager();
-        if (!$em instanceof EntityManagerInterface) {
-            return new QueryType($dql);
+        $em = $this->object_metadata_resolver->get_object_manager();
+        if (!$em instanceof Entity_Manager_Interface) {
+            return new Query_Type($dql);
         }
-
-        $typeBuilder = new QueryResultTypeBuilder();
-
+        $type_builder = new Query_Result_Type_Builder();
         try {
-            $query = $em->createQuery($dql);
-            QueryResultTypeWalker::walk($query, $typeBuilder, $this->descriptorRegistry, $this->phpVersion, $this->driverDetector);
-        } catch (ORMException|DBALException|CommonException|MappingException|\Doctrine\ORM\Exception\ORMException|AssertionError $e) {
-            return new QueryType($dql);
+            $query = $em->create_query($dql);
+            Query_Result_Type_Walker::walk($query, $type_builder, $this->descriptor_registry, $this->php_version, $this->driver_detector);
+        } catch (Orm_Exception|Dbal_Exception|Common_Exception|Mapping_Exception|\Doctrine\ORM\Exception\Orm_Exception|AssertionError $e) {
+            return new Query_Type($dql);
         }
-
-        return new QueryType($dql, $typeBuilder->getIndexType(), $typeBuilder->getResultType());
+        return new Query_Type($dql, $type_builder->get_index_type(), $type_builder->get_result_type());
     }
-
 }

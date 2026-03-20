@@ -1,70 +1,54 @@
 <?php
 
-declare(strict_types=1);
+declare (strict_types=1);
+namespace Php_Stan\Rules\Doctrine\ORM;
 
-namespace PHPStan\Rules\Doctrine\ORM;
-
-use Doctrine\Common\Annotations\AnnotationException;
-use Doctrine\ORM\Mapping\MappingException;
-use PhpParser\Node;
-use PHPStan\Analyser\Scope;
-use PHPStan\Node\InClassNode;
-use PHPStan\Rules\Rule;
-use PHPStan\Rules\RuleErrorBuilder;
-use PHPStan\Type\Doctrine\ObjectMetadataResolver;
-use ReflectionException;
-
+use Doctrine\Common\Annotations\Annotation_Exception;
+use Doctrine\ORM\Mapping\Mapping_Exception;
+use Php_Parser\Node;
+use Php_Stan\Analyser\Scope;
+use Php_Stan\Node\In_Class_Node;
+use Php_Stan\Rules\Rule;
+use Php_Stan\Rules\Rule_Error_Builder;
+use Php_Stan\Type\Doctrine\Object_Metadata_Resolver;
+use Reflection_Exception;
 /**
  * @implements Rule<InClassNode>
  */
-class EntityMappingExceptionRule implements Rule
+class Entity_Mapping_Exception_Rule implements Rule
 {
-    private ObjectMetadataResolver $objectMetadataResolver;
-
-    public function __construct(
-        ObjectMetadataResolver $objectMetadataResolver
-    ) {
-        $this->objectMetadataResolver = $objectMetadataResolver;
-    }
-
-    public function getNodeType(): string
+    private Object_Metadata_Resolver $object_metadata_resolver;
+    public function __construct(Object_Metadata_Resolver $object_metadata_resolver)
     {
-        return InClassNode::class;
+        $this->object_metadata_resolver = $object_metadata_resolver;
     }
-
-    public function processNode(Node $node, Scope $scope): array
+    public function get_node_type(): string
     {
-        $class = $scope->getClassReflection();
+        return In_Class_Node::class;
+    }
+    public function process_node(Node $node, Scope $scope): array
+    {
+        $class = $scope->get_class_reflection();
         if ($class === null) {
             return [];
         }
-
-        $objectManager = $this->objectMetadataResolver->getObjectManager();
-        if ($objectManager === null) {
+        $object_manager = $this->object_metadata_resolver->get_object_manager();
+        if ($object_manager === null) {
             return [];
         }
-
-        $className = $class->getName();
+        $class_name = $class->get_name();
         try {
-            if ($objectManager->getMetadataFactory()->isTransient($className)) {
+            if ($object_manager->get_metadata_factory()->is_transient($class_name)) {
                 return [];
             }
-        } catch (ReflectionException $e) {
+        } catch (Reflection_Exception $e) {
             return [];
         }
-
         try {
-            $objectManager->getClassMetadata($className);
-        } catch (\Doctrine\Persistence\Mapping\MappingException | MappingException | AnnotationException $e) {
-            return [
-                RuleErrorBuilder::message($e->getMessage())
-                    ->nonIgnorable()
-                    ->identifier('doctrine.mapping')
-                    ->build(),
-            ];
+            $object_manager->get_class_metadata($class_name);
+        } catch (\Doctrine\Persistence\Mapping\Mapping_Exception|Mapping_Exception|Annotation_Exception $e) {
+            return [Rule_Error_Builder::message($e->get_message())->non_ignorable()->identifier('doctrine.mapping')->build()];
         }
-
         return [];
     }
-
 }

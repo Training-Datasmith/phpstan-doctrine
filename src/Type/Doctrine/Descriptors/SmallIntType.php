@@ -1,32 +1,26 @@
 <?php
 
-declare(strict_types=1);
+declare (strict_types=1);
+namespace Php_Stan\Type\Doctrine\Descriptors;
 
-namespace PHPStan\Type\Doctrine\Descriptors;
-
-use PHPStan\Type\IntegerType;
-use PHPStan\Type\Type;
-
-class SmallIntType implements DoctrineTypeDescriptor
+use Php_Stan\Type\Integer_Type;
+use Php_Stan\Type\Type;
+class Small_Int_Type implements Doctrine_Type_Descriptor
 {
-    public function getType(): string
+    public function get_type(): string
     {
-        return \Doctrine\DBAL\Types\SmallIntType::class;
+        return \Doctrine\DBAL\Types\Small_Int_Type::class;
     }
-
-    public function getWritableToPropertyType(): Type
+    public function get_writable_to_property_type(): Type
     {
-        return new IntegerType();
+        return new Integer_Type();
     }
-
-    public function getWritableToDatabaseType(): Type
+    public function get_writable_to_database_type(): Type
     {
-        return new IntegerType();
+        return new Integer_Type();
     }
-
-    public function getDatabaseInternalType(): Type
+    public function get_database_internal_type(): Type
     {
-        return new IntegerType();
+        return new Integer_Type();
     }
-
 }

@@ -1,19 +1,16 @@
 <?php
 
-declare(strict_types=1);
+declare (strict_types=1);
+namespace Php_Stan\Doctrine\Mapping;
 
-namespace PHPStan\Doctrine\Mapping;
-
-use Doctrine\Common\Annotations\AnnotationException;
-use Doctrine\ORM\Mapping\MappingException;
-use Doctrine\Persistence\Mapping\ClassMetadata;
-use Doctrine\Persistence\Mapping\Driver\MappingDriver;
-
-class MappingDriverChain implements MappingDriver
+use Doctrine\Common\Annotations\Annotation_Exception;
+use Doctrine\ORM\Mapping\Mapping_Exception;
+use Doctrine\Persistence\Mapping\Class_Metadata;
+use Doctrine\Persistence\Mapping\Driver\Mapping_Driver;
+class Mapping_Driver_Chain implements Mapping_Driver
 {
     /** @var MappingDriver[] */
     private array $drivers;
-
     /**
      * @param MappingDriver[] $drivers
      */
@@ -21,55 +18,48 @@ class MappingDriverChain implements MappingDriver
     {
         $this->drivers = $drivers;
     }
-
     /**
      * @param class-string $className
      */
-    public function loadMetadataForClass($className, ClassMetadata $metadata): void
+    public function load_metadata_for_class($class_name, Class_Metadata $metadata): void
     {
         foreach ($this->drivers as $driver) {
             try {
-                $driver->loadMetadataForClass($className, $metadata);
+                $driver->load_metadata_for_class($class_name, $metadata);
                 return;
-            } catch (\Doctrine\Persistence\Mapping\MappingException | MappingException | AnnotationException $e) {
+            } catch (\Doctrine\Persistence\Mapping\Mapping_Exception|Mapping_Exception|Annotation_Exception $e) {
                 // pass
             }
         }
     }
-
     /**
      * @return mixed[]
      */
-    public function getAllClassNames(): array
+    public function get_all_class_names(): array
     {
         $all = [];
         foreach ($this->drivers as $driver) {
-            foreach ($driver->getAllClassNames() as $className) {
-                $all[] = $className;
+            foreach ($driver->get_all_class_names() as $class_name) {
+                $all[] = $class_name;
             }
         }
-
         return $all;
     }
-
     /**
      * @param class-string $className
      */
-    public function isTransient($className): bool
+    public function is_transient($class_name): bool
     {
         foreach ($this->drivers as $driver) {
             try {
-                if ($driver->isTransient($className)) {
+                if ($driver->is_transient($class_name)) {
                     continue;
                 }
-
                 return false;
-            } catch (\Doctrine\Persistence\Mapping\MappingException | MappingException | AnnotationException $e) {
+            } catch (\Doctrine\Persistence\Mapping\Mapping_Exception|Mapping_Exception|Annotation_Exception $e) {
                 // pass
             }
         }
-
         return true;
     }
-
 }

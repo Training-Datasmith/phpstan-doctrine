@@ -1,66 +1,49 @@
 <?php
 
-declare(strict_types=1);
+declare (strict_types=1);
+namespace Php_Stan\Rules\Doctrine\ORM;
 
-namespace PHPStan\Rules\Doctrine\ORM;
-
-use PhpParser\Node;
-use PhpParser\Node\Stmt\ClassMethod;
-use PHPStan\Analyser\Scope;
-use PHPStan\Rules\Rule;
-use PHPStan\Rules\RuleErrorBuilder;
-use PHPStan\ShouldNotHappenException;
-use PHPStan\Type\Doctrine\ObjectMetadataResolver;
-
+use Php_Parser\Node;
+use Php_Parser\Node\Stmt\Class_Method;
+use Php_Stan\Analyser\Scope;
+use Php_Stan\Rules\Rule;
+use Php_Stan\Rules\Rule_Error_Builder;
+use Php_Stan\Should_Not_Happen_Exception;
+use Php_Stan\Type\Doctrine\Object_Metadata_Resolver;
 use function sprintf;
-
 /**
  * @implements Rule<ClassMethod>
  */
-class EntityConstructorNotFinalRule implements Rule
+class Entity_Constructor_Not_Final_Rule implements Rule
 {
-    private ObjectMetadataResolver $objectMetadataResolver;
-
-    public function __construct(ObjectMetadataResolver $objectMetadataResolver)
+    private Object_Metadata_Resolver $object_metadata_resolver;
+    public function __construct(Object_Metadata_Resolver $object_metadata_resolver)
     {
-        $this->objectMetadataResolver = $objectMetadataResolver;
+        $this->object_metadata_resolver = $object_metadata_resolver;
     }
-
-    public function getNodeType(): string
+    public function get_node_type(): string
     {
-        return ClassMethod::class;
+        return Class_Method::class;
     }
-
-    public function processNode(Node $node, Scope $scope): array
+    public function process_node(Node $node, Scope $scope): array
     {
         if ($node->name->name !== '__construct') {
             return [];
         }
-
-        if (!$node->isFinal()) {
+        if (!$node->is_final()) {
             return [];
         }
-
-        $classReflection = $scope->getClassReflection();
-        if ($classReflection === null) {
-            throw new ShouldNotHappenException();
+        $class_reflection = $scope->get_class_reflection();
+        if ($class_reflection === null) {
+            throw new Should_Not_Happen_Exception();
         }
-
-        if ($this->objectMetadataResolver->isTransient($classReflection->getName())) {
+        if ($this->object_metadata_resolver->is_transient($class_reflection->get_name())) {
             return [];
         }
-
-        $metadata = $this->objectMetadataResolver->getClassMetadata($classReflection->getName());
-        if ($metadata !== null && $metadata->isEmbeddedClass === true) {
+        $metadata = $this->object_metadata_resolver->get_class_metadata($class_reflection->get_name());
+        if ($metadata !== null && $metadata->is_embedded_class === true) {
             return [];
         }
-
-        return [
-            RuleErrorBuilder::message(sprintf(
-                'Constructor of class %s is final which can cause problems with proxies.',
-                $classReflection->getDisplayName(),
-            ))->identifier('doctrine.finalConstructor')->build(),
-        ];
+        return [Rule_Error_Builder::message(sprintf('Constructor of class %s is final which can cause problems with proxies.', $class_reflection->get_display_name()))->identifier('doctrine.finalConstructor')->build()];
     }
-
 }

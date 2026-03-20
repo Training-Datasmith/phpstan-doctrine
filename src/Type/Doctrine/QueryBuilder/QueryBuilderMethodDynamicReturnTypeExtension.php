@@ -1,90 +1,67 @@
 <?php
 
-declare(strict_types=1);
-
-namespace PHPStan\Type\Doctrine\QueryBuilder;
+declare (strict_types=1);
+namespace Php_Stan\Type\Doctrine\Query_Builder;
 
 use function count;
-
-use Doctrine\ORM\QueryBuilder;
-
+use Doctrine\ORM\Query_Builder;
 use function in_array;
-
-use PhpParser\Node\Expr\MethodCall;
-use PhpParser\Node\Identifier;
-use PHPStan\Analyser\Scope;
-use PHPStan\Reflection\MethodReflection;
-use PHPStan\Type\Doctrine\DoctrineTypeUtils;
-use PHPStan\Type\DynamicMethodReturnTypeExtension;
-use PHPStan\Type\MixedType;
-use PHPStan\Type\ObjectType;
-use PHPStan\Type\Type;
-use PHPStan\Type\TypeCombinator;
-
+use Php_Parser\Node\Expr\Method_Call;
+use Php_Parser\Node\Identifier;
+use Php_Stan\Analyser\Scope;
+use Php_Stan\Reflection\Method_Reflection;
+use Php_Stan\Type\Doctrine\Doctrine_Type_Utils;
+use Php_Stan\Type\Dynamic_Method_Return_Type_Extension;
+use Php_Stan\Type\Mixed_Type;
+use Php_Stan\Type\Object_Type;
+use Php_Stan\Type\Type;
+use Php_Stan\Type\Type_Combinator;
 use function strtolower;
-
-class QueryBuilderMethodDynamicReturnTypeExtension implements DynamicMethodReturnTypeExtension
+class Query_Builder_Method_Dynamic_Return_Type_Extension implements Dynamic_Method_Return_Type_Extension
 {
     private const MAX_COMBINATIONS = 16;
-
     /** @var class-string|null */
-    private ?string $queryBuilderClass = null;
-
+    private ?string $query_builder_class = null;
     /**
      * @param class-string|null $queryBuilderClass
      */
-    public function __construct(
-        ?string $queryBuilderClass
-    ) {
-        $this->queryBuilderClass = $queryBuilderClass;
-    }
-
-    public function getClass(): string
+    public function __construct(?string $query_builder_class)
     {
-        return $this->queryBuilderClass ?? 'Doctrine\ORM\QueryBuilder';
+        $this->query_builder_class = $query_builder_class;
     }
-
-    public function isMethodSupported(MethodReflection $methodReflection): bool
+    public function get_class(): string
     {
-        $returnType = $methodReflection->getVariants()[0]->getReturnType();
-        if ($returnType instanceof MixedType) {
+        return $this->query_builder_class ?? 'Doctrine\ORM\QueryBuilder';
+    }
+    public function is_method_supported(Method_Reflection $method_reflection): bool
+    {
+        $return_type = $method_reflection->get_variants()[0]->get_return_type();
+        if ($return_type instanceof Mixed_Type) {
             return false;
         }
-        return (new ObjectType(QueryBuilder::class))->isSuperTypeOf($returnType)->yes();
+        return (new Object_Type(Query_Builder::class))->is_super_type_of($return_type)->yes();
     }
-
-    public function getTypeFromMethodCall(
-        MethodReflection $methodReflection,
-        MethodCall $methodCall,
-        Scope $scope
-    ): Type {
-        $calledOnType = $scope->getType($methodCall->var);
-        if (!$methodCall->name instanceof Identifier) {
-            return $calledOnType;
+    public function get_type_from_method_call(Method_Reflection $method_reflection, Method_Call $method_call, Scope $scope): Type
+    {
+        $called_on_type = $scope->get_type($method_call->var);
+        if (!$method_call->name instanceof Identifier) {
+            return $called_on_type;
         }
-        $lowerMethodName = strtolower($methodCall->name->toString());
-        if (in_array($lowerMethodName, [
-            'setparameter',
-            'setparameters',
-        ], true)) {
-            return $calledOnType;
+        $lower_method_name = strtolower($method_call->name->to_string());
+        if (in_array($lower_method_name, ['setparameter', 'setparameters'], true)) {
+            return $called_on_type;
         }
-
-        $queryBuilderTypes = DoctrineTypeUtils::getQueryBuilderTypes($calledOnType);
-        if (count($queryBuilderTypes) === 0) {
-            return $calledOnType;
+        $query_builder_types = Doctrine_Type_Utils::get_query_builder_types($called_on_type);
+        if (count($query_builder_types) === 0) {
+            return $called_on_type;
         }
-
-        if (count($queryBuilderTypes) > self::MAX_COMBINATIONS) {
-            return $calledOnType;
+        if (count($query_builder_types) > self::MAX_COMBINATIONS) {
+            return $called_on_type;
         }
-
-        $resultTypes = [];
-        foreach ($queryBuilderTypes as $queryBuilderType) {
-            $resultTypes[] = $queryBuilderType->append($methodCall);
+        $result_types = [];
+        foreach ($query_builder_types as $query_builder_type) {
+            $result_types[] = $query_builder_type->append($method_call);
         }
-
-        return TypeCombinator::union(...$resultTypes);
+        return Type_Combinator::union(...$result_types);
     }
-
 }

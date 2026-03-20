@@ -1,73 +1,47 @@
 <?php
 
-declare(strict_types=1);
-
-namespace PHPStan\Type\Doctrine\Descriptors;
+declare (strict_types=1);
+namespace Php_Stan\Type\Doctrine\Descriptors;
 
 use Doctrine\DBAL\Connection;
-
 use function in_array;
-
-use PHPStan\Doctrine\Driver\DriverDetector;
-use PHPStan\Type\Constant\ConstantIntegerType;
-use PHPStan\Type\Type;
-use PHPStan\Type\TypeCombinator;
-
-class BooleanType implements DoctrineTypeDescriptor, DoctrineTypeDriverAwareDescriptor
+use Php_Stan\Doctrine\Driver\Driver_Detector;
+use Php_Stan\Type\Constant\Constant_Integer_Type;
+use Php_Stan\Type\Type;
+use Php_Stan\Type\Type_Combinator;
+class Boolean_Type implements Doctrine_Type_Descriptor, Doctrine_Type_Driver_Aware_Descriptor
 {
-    private DriverDetector $driverDetector;
-
-    public function __construct(DriverDetector $driverDetector)
+    private Driver_Detector $driver_detector;
+    public function __construct(Driver_Detector $driver_detector)
     {
-        $this->driverDetector = $driverDetector;
+        $this->driver_detector = $driver_detector;
     }
-
-    public function getType(): string
+    public function get_type(): string
     {
-        return \Doctrine\DBAL\Types\BooleanType::class;
+        return \Doctrine\DBAL\Types\Boolean_Type::class;
     }
-
-    public function getWritableToPropertyType(): Type
+    public function get_writable_to_property_type(): Type
     {
-        return new \PHPStan\Type\BooleanType();
+        return new \Php_Stan\Type\Boolean_Type();
     }
-
-    public function getWritableToDatabaseType(): Type
+    public function get_writable_to_database_type(): Type
     {
-        return new \PHPStan\Type\BooleanType();
+        return new \Php_Stan\Type\Boolean_Type();
     }
-
-    public function getDatabaseInternalType(): Type
+    public function get_database_internal_type(): Type
     {
-        return TypeCombinator::union(
-            new ConstantIntegerType(0),
-            new ConstantIntegerType(1),
-            new \PHPStan\Type\BooleanType(),
-        );
+        return Type_Combinator::union(new Constant_Integer_Type(0), new Constant_Integer_Type(1), new \Php_Stan\Type\Boolean_Type());
     }
-
-    public function getDatabaseInternalTypeForDriver(Connection $connection): Type
+    public function get_database_internal_type_for_driver(Connection $connection): Type
     {
-        $driverType = $this->driverDetector->detect($connection);
-
-        if ($driverType === DriverDetector::PGSQL || $driverType === DriverDetector::PDO_PGSQL) {
-            return new \PHPStan\Type\BooleanType();
+        $driver_type = $this->driver_detector->detect($connection);
+        if ($driver_type === Driver_Detector::PGSQL || $driver_type === Driver_Detector::PDO_PGSQL) {
+            return new \Php_Stan\Type\Boolean_Type();
         }
-
-        if (in_array($driverType, [
-            DriverDetector::SQLITE3,
-            DriverDetector::PDO_SQLITE,
-            DriverDetector::MYSQLI,
-            DriverDetector::PDO_MYSQL,
-        ], true)) {
-            return TypeCombinator::union(
-                new ConstantIntegerType(0),
-                new ConstantIntegerType(1),
-            );
+        if (in_array($driver_type, [Driver_Detector::SQLITE3, Driver_Detector::PDO_SQLITE, Driver_Detector::MYSQLI, Driver_Detector::PDO_MYSQL], true)) {
+            return Type_Combinator::union(new Constant_Integer_Type(0), new Constant_Integer_Type(1));
         }
-
         // not yet supported driver, return the old implementation guess
-        return $this->getDatabaseInternalType();
+        return $this->get_database_internal_type();
     }
-
 }

@@ -1,27 +1,22 @@
 <?php
 
-declare(strict_types=1);
+declare (strict_types=1);
+namespace Php_Stan\Type\Doctrine\Descriptors;
 
-namespace PHPStan\Type\Doctrine\Descriptors;
-
-use PHPStan\Type\Type;
-
+use Php_Stan\Type\Type;
 /** @api */
-interface DoctrineTypeDescriptor
+interface Doctrine_Type_Descriptor
 {
     /**
      * @return class-string<\Doctrine\DBAL\Types\Type>
      */
-    public function getType(): string;
-
+    public function get_type(): string;
     /**
      * This is used for inferring direct column results, e.g. SELECT e.field
      * It should comply with convertToPHPValue return value
      */
-    public function getWritableToPropertyType(): Type;
-
-    public function getWritableToDatabaseType(): Type;
-
+    public function get_writable_to_property_type(): Type;
+    public function get_writable_to_database_type(): Type;
     /**
      * This is used for inferring how database fetches column of such type
      *
@@ -31,6 +26,5 @@ interface DoctrineTypeDescriptor
      * Sometimes, the type cannot be reliably decided without driver context,
      * use DoctrineTypeDriverAwareDescriptor in such cases
      */
-    public function getDatabaseInternalType(): Type;
-
+    public function get_database_internal_type(): Type;
 }

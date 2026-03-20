@@ -1,37 +1,27 @@
 <?php
 
-declare(strict_types=1);
-
-namespace PHPStan\Classes;
+declare (strict_types=1);
+namespace Php_Stan\Classes;
 
 use Doctrine\Persistence\Proxy;
-use PHPStan\Type\Doctrine\ObjectMetadataResolver;
-
-class DoctrineProxyForbiddenClassNamesExtension implements ForbiddenClassNameExtension
+use Php_Stan\Type\Doctrine\Object_Metadata_Resolver;
+class Doctrine_Proxy_Forbidden_Class_Names_Extension implements Forbidden_Class_Name_Extension
 {
-    private ObjectMetadataResolver $objectMetadataResolver;
-
-    public function __construct(ObjectMetadataResolver $objectMetadataResolver)
+    private Object_Metadata_Resolver $object_metadata_resolver;
+    public function __construct(Object_Metadata_Resolver $object_metadata_resolver)
     {
-        $this->objectMetadataResolver = $objectMetadataResolver;
+        $this->object_metadata_resolver = $object_metadata_resolver;
     }
-
-    public function getClassPrefixes(): array
+    public function get_class_prefixes(): array
     {
-        $objectManager = $this->objectMetadataResolver->getObjectManager();
-        if ($objectManager === null) {
+        $object_manager = $this->object_metadata_resolver->get_object_manager();
+        if ($object_manager === null) {
             return [];
         }
-
-        $entityManagerInterface = 'Doctrine\ORM\EntityManagerInterface';
-
-        if (!$objectManager instanceof $entityManagerInterface) {
+        $entity_manager_interface = 'Doctrine\ORM\EntityManagerInterface';
+        if (!$object_manager instanceof $entity_manager_interface) {
             return [];
         }
-
-        return [
-            'Doctrine' => $objectManager->getConfiguration()->getProxyNamespace() . '\\' . Proxy::MARKER,
-        ];
+        return ['Doctrine' => $object_manager->get_configuration()->get_proxy_namespace() . '\\' . Proxy::MARKER];
     }
-
 }

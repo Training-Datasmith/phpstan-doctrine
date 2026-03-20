@@ -1,33 +1,25 @@
 <?php
 
-declare(strict_types=1);
+declare (strict_types=1);
+namespace Php_Stan\Type\Doctrine;
 
-namespace PHPStan\Type\Doctrine;
-
-use PhpParser\Node\Expr\MethodCall;
-use PHPStan\Analyser\Scope;
-use PHPStan\Reflection\MethodReflection;
-use PHPStan\Type\DynamicMethodReturnTypeExtension;
-use PHPStan\Type\Type;
-
-class DoctrineSelectableDynamicReturnTypeExtension implements DynamicMethodReturnTypeExtension
+use Php_Parser\Node\Expr\Method_Call;
+use Php_Stan\Analyser\Scope;
+use Php_Stan\Reflection\Method_Reflection;
+use Php_Stan\Type\Dynamic_Method_Return_Type_Extension;
+use Php_Stan\Type\Type;
+class Doctrine_Selectable_Dynamic_Return_Type_Extension implements Dynamic_Method_Return_Type_Extension
 {
-    public function getClass(): string
+    public function get_class(): string
     {
         return 'Doctrine\Common\Collections\Collection';
     }
-
-    public function isMethodSupported(MethodReflection $methodReflection): bool
+    public function is_method_supported(Method_Reflection $method_reflection): bool
     {
-        return $methodReflection->getName() === 'matching';
+        return $method_reflection->get_name() === 'matching';
     }
-
-    public function getTypeFromMethodCall(
-        MethodReflection $methodReflection,
-        MethodCall $methodCall,
-        Scope $scope
-    ): Type {
-        return $scope->getType($methodCall->var);
+    public function get_type_from_method_call(Method_Reflection $method_reflection, Method_Call $method_call, Scope $scope): Type
+    {
+        return $scope->get_type($method_call->var);
     }
-
 }

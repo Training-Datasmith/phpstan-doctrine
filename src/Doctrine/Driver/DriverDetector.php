@@ -1,26 +1,23 @@
 <?php
 
-declare(strict_types=1);
-
-namespace PHPStan\Doctrine\Driver;
+declare (strict_types=1);
+namespace Php_Stan\Doctrine\Driver;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Driver\IBMDB2\Driver as IbmDb2Driver;
 use Doctrine\DBAL\Driver\Mysqli\Driver as MysqliDriver;
 use Doctrine\DBAL\Driver\OCI8\Driver as Oci8Driver;
-use Doctrine\DBAL\Driver\PDO\MySQL\Driver as PdoMysqlDriver;
+use Doctrine\DBAL\Driver\PDO\My_Sql\Driver as PdoMysqlDriver;
 use Doctrine\DBAL\Driver\PDO\OCI\Driver as PdoOciDriver;
-use Doctrine\DBAL\Driver\PDO\PgSQL\Driver as PdoPgSQLDriver;
-use Doctrine\DBAL\Driver\PDO\SQLite\Driver as PdoSQLiteDriver;
-use Doctrine\DBAL\Driver\PDO\SQLSrv\Driver as PdoSqlSrvDriver;
-use Doctrine\DBAL\Driver\PgSQL\Driver as PgSQLDriver;
-use Doctrine\DBAL\Driver\SQLite3\Driver as SQLite3Driver;
-use Doctrine\DBAL\Driver\SQLSrv\Driver as SqlSrvDriver;
-
+use Doctrine\DBAL\Driver\PDO\Pg_Sql\Driver as PdoPgSQLDriver;
+use Doctrine\DBAL\Driver\PDO\Sq_Lite\Driver as PdoSQLiteDriver;
+use Doctrine\DBAL\Driver\PDO\Sql_Srv\Driver as PdoSqlSrvDriver;
+use Doctrine\DBAL\Driver\Pg_Sql\Driver as PgSQLDriver;
+use Doctrine\DBAL\Driver\Sq_Lite3\Driver as SQLite3Driver;
+use Doctrine\DBAL\Driver\Sql_Srv\Driver as SqlSrvDriver;
 use function get_class;
 use function is_a;
-
-class DriverDetector
+class Driver_Detector
 {
     public const IBM_DB2 = 'ibm_db2';
     public const MYSQLI = 'mysqli';
@@ -33,84 +30,67 @@ class DriverDetector
     public const PGSQL = 'pgsql';
     public const SQLITE3 = 'sqlite3';
     public const SQLSRV = 'sqlsrv';
-
     /**
      * @return self::*|null
      */
     public function detect(Connection $connection): ?string
     {
-        $driver = $connection->getDriver();
-
-        return $this->deduceFromDriverClass(get_class($driver)) ?? $this->deduceFromParams($connection);
+        $driver = $connection->get_driver();
+        return $this->deduce_from_driver_class(get_class($driver)) ?? $this->deduce_from_params($connection);
     }
-
     /**
      * @return array<mixed>
      */
-    public function detectDriverOptions(Connection $connection): array
+    public function detect_driver_options(Connection $connection): array
     {
-        return $connection->getParams()['driverOptions'] ?? [];
+        return $connection->get_params()['driverOptions'] ?? [];
     }
-
     /**
      * @return self::*|null
      */
-    private function deduceFromDriverClass(string $driverClass): ?string
+    private function deduce_from_driver_class(string $driver_class): ?string
     {
-        if (is_a($driverClass, MysqliDriver::class, true)) {
+        if (is_a($driver_class, Mysqli_Driver::class, true)) {
             return self::MYSQLI;
         }
-
-        if (is_a($driverClass, PdoMysqlDriver::class, true)) {
+        if (is_a($driver_class, Pdo_Mysql_Driver::class, true)) {
             return self::PDO_MYSQL;
         }
-
-        if (is_a($driverClass, PdoSQLiteDriver::class, true)) {
+        if (is_a($driver_class, Pdo_Sq_Lite_Driver::class, true)) {
             return self::PDO_SQLITE;
         }
-
-        if (is_a($driverClass, PdoSqlSrvDriver::class, true)) {
+        if (is_a($driver_class, Pdo_Sql_Srv_Driver::class, true)) {
             return self::PDO_SQLSRV;
         }
-
-        if (is_a($driverClass, PdoOciDriver::class, true)) {
+        if (is_a($driver_class, Pdo_Oci_Driver::class, true)) {
             return self::PDO_OCI;
         }
-
-        if (is_a($driverClass, PdoPgSQLDriver::class, true)) {
+        if (is_a($driver_class, Pdo_Pg_Sql_Driver::class, true)) {
             return self::PDO_PGSQL;
         }
-
-        if (is_a($driverClass, SQLite3Driver::class, true)) {
+        if (is_a($driver_class, Sq_Lite3driver::class, true)) {
             return self::SQLITE3;
         }
-
-        if (is_a($driverClass, PgSQLDriver::class, true)) {
+        if (is_a($driver_class, Pg_Sql_Driver::class, true)) {
             return self::PGSQL;
         }
-
-        if (is_a($driverClass, SqlSrvDriver::class, true)) {
+        if (is_a($driver_class, Sql_Srv_Driver::class, true)) {
             return self::SQLSRV;
         }
-
-        if (is_a($driverClass, Oci8Driver::class, true)) {
+        if (is_a($driver_class, Oci8Driver::class, true)) {
             return self::OCI8;
         }
-
-        if (is_a($driverClass, IbmDb2Driver::class, true)) {
+        if (is_a($driver_class, Ibm_Db2driver::class, true)) {
             return self::IBM_DB2;
         }
-
         return null;
     }
-
     /**
      * @return self::*|null
      */
-    private function deduceFromParams(Connection $connection): ?string
+    private function deduce_from_params(Connection $connection): ?string
     {
-        $params = $connection->getParams();
-
+        $params = $connection->get_params();
         if (isset($params['driver'])) {
             switch ($params['driver']) {
                 case 'pdo_mysql':
@@ -129,22 +109,21 @@ class DriverDetector
                     return self::PDO_SQLSRV;
                 case 'mysqli':
                     return self::MYSQLI;
-                case 'pgsql': // @phpstan-ignore-line never matches on PHP 7.3- with old dbal
+                case 'pgsql':
+                    // @phpstan-ignore-line never matches on PHP 7.3- with old dbal
                     return self::PGSQL;
                 case 'sqlsrv':
                     return self::SQLSRV;
-                case 'sqlite3': // @phpstan-ignore-line never matches on PHP 7.3- with old dbal
+                case 'sqlite3':
+                    // @phpstan-ignore-line never matches on PHP 7.3- with old dbal
                     return self::SQLITE3;
                 default:
                     return null;
             }
         }
-
         if (isset($params['driverClass'])) {
-            return $this->deduceFromDriverClass($params['driverClass']);
+            return $this->deduce_from_driver_class($params['driverClass']);
         }
-
         return null;
     }
-
 }

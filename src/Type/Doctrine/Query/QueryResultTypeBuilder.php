@@ -1,36 +1,31 @@
 <?php
 
-declare(strict_types=1);
-
-namespace PHPStan\Type\Doctrine\Query;
+declare (strict_types=1);
+namespace Php_Stan\Type\Doctrine\Query;
 
 use function array_key_last;
 use function count;
 use function is_int;
-
-use PHPStan\Type\Constant\ConstantArrayTypeBuilder;
-use PHPStan\Type\Constant\ConstantIntegerType;
-use PHPStan\Type\Constant\ConstantStringType;
-use PHPStan\Type\NullType;
-use PHPStan\Type\Type;
-use PHPStan\Type\TypeCombinator;
-use PHPStan\Type\VoidType;
-
+use Php_Stan\Type\Constant\Constant_Array_Type_Builder;
+use Php_Stan\Type\Constant\Constant_Integer_Type;
+use Php_Stan\Type\Constant\Constant_String_Type;
+use Php_Stan\Type\Null_Type;
+use Php_Stan\Type\Type;
+use Php_Stan\Type\Type_Combinator;
+use Php_Stan\Type\Void_Type;
 /**
  * QueryResultTypeBuilder helps building the result type of a query
  *
  * Like Doctrine\ORM\Query\ResultSetMapping, but for static typing concerns
  */
-final class QueryResultTypeBuilder
+final class Query_Result_Type_Builder
 {
-    private bool $selectQuery = false;
-
+    private bool $select_query = false;
     /**
      * Whether the result is an array shape or a single entity or NEW object
      *
      */
-    private bool $isShape = false;
-
+    private bool $is_shape = false;
     /**
      * Map from selected entity aliases to entity types
      *
@@ -39,7 +34,6 @@ final class QueryResultTypeBuilder
      * @var array<array-key,Type>
      */
     private array $entities = [];
-
     /**
      * Map from selected entity alias to result alias
      *
@@ -47,97 +41,82 @@ final class QueryResultTypeBuilder
      *
      * @var array<array-key,string>
      */
-    private array $entityResultAliases = [];
-
+    private array $entity_result_aliases = [];
     /**
      * Map from selected scalar result alias to scalar type
      *
      * @var array<array-key,Type>
      */
     private array $scalars = [];
-
     /**
      * Map from selected NEW objcet result alias to NEW object type
      *
      * @var array<array-key,Type>
      */
-    private array $newObjects = [];
-
-    private Type $indexedBy;
-
+    private array $new_objects = [];
+    private Type $indexed_by;
     public function __construct()
     {
-        $this->indexedBy = new NullType();
+        $this->indexed_by = new Null_Type();
     }
-
-    public function setSelectQuery(): void
+    public function set_select_query(): void
     {
-        $this->selectQuery = true;
+        $this->select_query = true;
     }
-
-    public function isSelectQuery(): bool
+    public function is_select_query(): bool
     {
-        return $this->selectQuery;
+        return $this->select_query;
     }
-
-    public function addEntity(string $entityAlias, Type $type, ?string $resultAlias): void
+    public function add_entity(string $entity_alias, Type $type, ?string $result_alias): void
     {
-        $this->entities[$entityAlias] = $type;
-        if ($resultAlias === null) {
+        $this->entities[$entity_alias] = $type;
+        if ($result_alias === null) {
             return;
         }
-
-        $this->entityResultAliases[$entityAlias] = $resultAlias;
-        $this->isShape = true;
+        $this->entity_result_aliases[$entity_alias] = $result_alias;
+        $this->is_shape = true;
     }
-
     /**
      * @return array<array-key,Type>
      */
-    public function getEntities(): array
+    public function get_entities(): array
     {
         return $this->entities;
     }
-
     /**
      * @param array-key $alias
      */
-    public function addScalar($alias, Type $type): void
+    public function add_scalar($alias, Type $type): void
     {
         $this->scalars[$alias] = $type;
-        $this->isShape = true;
+        $this->is_shape = true;
     }
-
     /**
      * @return array<int,Type>
      */
-    public function getScalars(): array
+    public function get_scalars(): array
     {
         return $this->scalars;
     }
-
     /**
      * @param array-key $alias
      */
-    public function addNewObject($alias, Type $type): void
+    public function add_new_object($alias, Type $type): void
     {
-        $this->newObjects[$alias] = $type;
-        if (count($this->newObjects) <= 1) {
+        $this->new_objects[$alias] = $type;
+        if (count($this->new_objects) <= 1) {
             return;
         }
-
-        $this->isShape = true;
+        $this->is_shape = true;
     }
-
     /**
      * @return array<int,Type>
      */
-    public function getNewObjects(): array
+    public function get_new_objects(): array
     {
-        return $this->newObjects;
+        return $this->new_objects;
     }
-
-    public function getResultType(): Type
+    public function get_result_type(): Type
     {
         // There are a few special cases here, depending on what is selected:
         //
@@ -164,92 +143,72 @@ final class QueryResultTypeBuilder
         //   - Result is an alternation of intersections of the shapes described
         //     in  "Multiple arbitrarily joint entities" and "NEW objects and/or
         //     scalars". Entities without a alias are at offset 0 in the shape.
-
         // We use Void for non-select queries. This is used as a marker by the
         // DynamicReturnTypeExtension for Query::getResult() and variants.
-        if (!$this->selectQuery) {
-            return new VoidType();
+        if (!$this->select_query) {
+            return new Void_Type();
         }
-
         // If there is a single NEW object and no scalars, the result is the
         // NEW object. This ignores any entity.
         // https://github.com/doctrine/orm/blob/v2.7.3/lib/Doctrine/ORM/Internal/Hydration/ObjectHydrator.php#L566-L570
-        if (count($this->newObjects) === 1 && count($this->scalars) === 0) {
-            foreach ($this->newObjects as $newObjects) {
-                return $newObjects;
+        if (count($this->new_objects) === 1 && count($this->scalars) === 0) {
+            foreach ($this->new_objects as $new_objects) {
+                return $new_objects;
             }
         }
-
         if (count($this->entities) === 0) {
-            $builder = ConstantArrayTypeBuilder::createEmpty();
-            $this->addNonEntitiesToShapeResult($builder);
-            return $builder->getArray();
+            $builder = Constant_Array_Type_Builder::create_empty();
+            $this->add_non_entities_to_shape_result($builder);
+            return $builder->get_array();
         }
-
         $alternatives = [];
-        $lastEntityAlias = array_key_last($this->entities);
-
-        foreach ($this->entities as $entityAlias => $entityType) {
-            if (!$this->isShape) {
-                $alternatives[] = $entityType;
-
+        $last_entity_alias = array_key_last($this->entities);
+        foreach ($this->entities as $entity_alias => $entity_type) {
+            if (!$this->is_shape) {
+                $alternatives[] = $entity_type;
                 continue;
             }
-
-            $resultAlias = $this->entityResultAliases[$entityAlias] ?? 0;
-            $offsetType = $this->resolveOffsetType($resultAlias);
-
-            $builder = ConstantArrayTypeBuilder::createEmpty();
-
-            $builder->setOffsetValueType($offsetType, $entityType);
-
-            if ($entityAlias === $lastEntityAlias) {
-                $this->addNonEntitiesToShapeResult($builder);
+            $result_alias = $this->entity_result_aliases[$entity_alias] ?? 0;
+            $offset_type = $this->resolve_offset_type($result_alias);
+            $builder = Constant_Array_Type_Builder::create_empty();
+            $builder->set_offset_value_type($offset_type, $entity_type);
+            if ($entity_alias === $last_entity_alias) {
+                $this->add_non_entities_to_shape_result($builder);
             }
-
-            $alternatives[] = $builder->getArray();
+            $alternatives[] = $builder->get_array();
         }
-
-        return TypeCombinator::union(...$alternatives);
+        return Type_Combinator::union(...$alternatives);
     }
-
-    private function addNonEntitiesToShapeResult(ConstantArrayTypeBuilder $builder): void
+    private function add_non_entities_to_shape_result(Constant_Array_Type_Builder $builder): void
     {
-        foreach ($this->scalars as $alias => $scalarType) {
-            $offsetType = $this->resolveOffsetType($alias);
-            $builder->setOffsetValueType($offsetType, $scalarType);
+        foreach ($this->scalars as $alias => $scalar_type) {
+            $offset_type = $this->resolve_offset_type($alias);
+            $builder->set_offset_value_type($offset_type, $scalar_type);
         }
-
-        foreach ($this->newObjects as $alias => $newObjectType) {
-            $offsetType = $this->resolveOffsetType($alias);
-            $builder->setOffsetValueType($offsetType, $newObjectType);
+        foreach ($this->new_objects as $alias => $new_object_type) {
+            $offset_type = $this->resolve_offset_type($alias);
+            $builder->set_offset_value_type($offset_type, $new_object_type);
         }
     }
-
     /**
      * @param array-key $alias
      */
-    private function resolveOffsetType($alias): Type
+    private function resolve_offset_type($alias): Type
     {
         if (is_int($alias)) {
-            return new ConstantIntegerType($alias);
+            return new Constant_Integer_Type($alias);
         }
-
-        return new ConstantStringType($alias);
+        return new Constant_String_Type($alias);
     }
-
-    public function setIndexedBy(Type $type): void
+    public function set_indexed_by(Type $type): void
     {
-        $this->indexedBy = $type;
+        $this->indexed_by = $type;
     }
-
-    public function getIndexType(): Type
+    public function get_index_type(): Type
     {
-        if (!$this->selectQuery) {
-            return new VoidType();
+        if (!$this->select_query) {
+            return new Void_Type();
         }
-
-        return $this->indexedBy;
+        return $this->indexed_by;
     }
-
 }

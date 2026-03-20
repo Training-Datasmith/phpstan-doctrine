@@ -1,67 +1,44 @@
 <?php
 
-declare(strict_types=1);
-
-namespace PHPStan\Type\Doctrine\Descriptors;
+declare (strict_types=1);
+namespace Php_Stan\Type\Doctrine\Descriptors;
 
 use Doctrine\DBAL\Connection;
-
 use function in_array;
-
-use PHPStan\Doctrine\Driver\DriverDetector;
-use PHPStan\Type\IntegerType;
-use PHPStan\Type\Type;
-use PHPStan\Type\TypeCombinator;
-
-class FloatType implements DoctrineTypeDescriptor, DoctrineTypeDriverAwareDescriptor
+use Php_Stan\Doctrine\Driver\Driver_Detector;
+use Php_Stan\Type\Integer_Type;
+use Php_Stan\Type\Type;
+use Php_Stan\Type\Type_Combinator;
+class Float_Type implements Doctrine_Type_Descriptor, Doctrine_Type_Driver_Aware_Descriptor
 {
-    private DriverDetector $driverDetector;
-
-    public function __construct(DriverDetector $driverDetector)
+    private Driver_Detector $driver_detector;
+    public function __construct(Driver_Detector $driver_detector)
     {
-        $this->driverDetector = $driverDetector;
+        $this->driver_detector = $driver_detector;
     }
-
-    public function getType(): string
+    public function get_type(): string
     {
-        return \Doctrine\DBAL\Types\FloatType::class;
+        return \Doctrine\DBAL\Types\Float_Type::class;
     }
-
-    public function getWritableToPropertyType(): Type
+    public function get_writable_to_property_type(): Type
     {
-        return new \PHPStan\Type\FloatType();
+        return new \Php_Stan\Type\Float_Type();
     }
-
-    public function getWritableToDatabaseType(): Type
+    public function get_writable_to_database_type(): Type
     {
-        return TypeCombinator::union(new \PHPStan\Type\FloatType(), new IntegerType());
+        return Type_Combinator::union(new \Php_Stan\Type\Float_Type(), new Integer_Type());
     }
-
-    public function getDatabaseInternalType(): Type
+    public function get_database_internal_type(): Type
     {
-        return TypeCombinator::union(
-            new \PHPStan\Type\FloatType(),
-            (new \PHPStan\Type\FloatType())->toString(),
-        );
+        return Type_Combinator::union(new \Php_Stan\Type\Float_Type(), (new \Php_Stan\Type\Float_Type())->to_string());
     }
-
-    public function getDatabaseInternalTypeForDriver(Connection $connection): Type
+    public function get_database_internal_type_for_driver(Connection $connection): Type
     {
-        $driverType = $this->driverDetector->detect($connection);
-
-        if (in_array($driverType, [
-            DriverDetector::SQLITE3,
-            DriverDetector::PDO_SQLITE,
-            DriverDetector::MYSQLI,
-            DriverDetector::PDO_MYSQL,
-            DriverDetector::PDO_PGSQL,
-            DriverDetector::PGSQL,
-        ], true)) {
-            return new \PHPStan\Type\FloatType();
+        $driver_type = $this->driver_detector->detect($connection);
+        if (in_array($driver_type, [Driver_Detector::SQLITE3, Driver_Detector::PDO_SQLITE, Driver_Detector::MYSQLI, Driver_Detector::PDO_MYSQL, Driver_Detector::PDO_PGSQL, Driver_Detector::PGSQL], true)) {
+            return new \Php_Stan\Type\Float_Type();
         }
-
         // not yet supported driver, return the old implementation guess
-        return $this->getDatabaseInternalType();
+        return $this->get_database_internal_type();
     }
-
 }

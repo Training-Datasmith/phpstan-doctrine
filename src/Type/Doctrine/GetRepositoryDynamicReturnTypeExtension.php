@@ -1,173 +1,125 @@
 <?php
 
-declare(strict_types=1);
-
-namespace PHPStan\Type\Doctrine;
+declare (strict_types=1);
+namespace Php_Stan\Type\Doctrine;
 
 use function count;
-
-use Doctrine\Common\Annotations\AnnotationException;
-use Doctrine\ODM\MongoDB\DocumentManager;
-use Doctrine\ODM\MongoDB\Mapping\ClassMetadata;
-use Doctrine\ODM\MongoDB\Repository\DocumentRepository;
-use Doctrine\ORM\EntityRepository;
-use Doctrine\ORM\Mapping\MappingException;
-use Doctrine\Persistence\ObjectRepository;
-use PhpParser\Node\Arg;
-use PhpParser\Node\Expr\MethodCall;
-use PHPStan\Analyser\Scope;
-use PHPStan\Reflection\MethodReflection;
-use PHPStan\Reflection\ParametersAcceptorSelector;
-use PHPStan\Reflection\ReflectionProvider;
-use PHPStan\Type\DynamicMethodReturnTypeExtension;
-use PHPStan\Type\ErrorType;
-use PHPStan\Type\Generic\GenericObjectType;
-use PHPStan\Type\ObjectType;
-use PHPStan\Type\ObjectWithoutClassType;
-use PHPStan\Type\Type;
-use PHPStan\Type\TypeCombinator;
-
-class GetRepositoryDynamicReturnTypeExtension implements DynamicMethodReturnTypeExtension
+use Doctrine\Common\Annotations\Annotation_Exception;
+use Doctrine\ODM\Mongo_Db\Document_Manager;
+use Doctrine\ODM\Mongo_Db\Mapping\Class_Metadata;
+use Doctrine\ODM\Mongo_Db\Repository\Document_Repository;
+use Doctrine\ORM\Entity_Repository;
+use Doctrine\ORM\Mapping\Mapping_Exception;
+use Doctrine\Persistence\Object_Repository;
+use Php_Parser\Node\Arg;
+use Php_Parser\Node\Expr\Method_Call;
+use Php_Stan\Analyser\Scope;
+use Php_Stan\Reflection\Method_Reflection;
+use Php_Stan\Reflection\Parameters_Acceptor_Selector;
+use Php_Stan\Reflection\Reflection_Provider;
+use Php_Stan\Type\Dynamic_Method_Return_Type_Extension;
+use Php_Stan\Type\Error_Type;
+use Php_Stan\Type\Generic\Generic_Object_Type;
+use Php_Stan\Type\Object_Type;
+use Php_Stan\Type\Object_Without_Class_Type;
+use Php_Stan\Type\Type;
+use Php_Stan\Type\Type_Combinator;
+class Get_Repository_Dynamic_Return_Type_Extension implements Dynamic_Method_Return_Type_Extension
 {
-    private ReflectionProvider $reflectionProvider;
-
-    private ?string $repositoryClass = null;
-
-    private ?string $ormRepositoryClass = null;
-
-    private ?string $odmRepositoryClass = null;
-
+    private Reflection_Provider $reflection_provider;
+    private ?string $repository_class = null;
+    private ?string $orm_repository_class = null;
+    private ?string $odm_repository_class = null;
     /** @var class-string */
-    private string $managerClass;
-
-    private ObjectMetadataResolver $metadataResolver;
-
+    private string $manager_class;
+    private Object_Metadata_Resolver $metadata_resolver;
     /**
      * @param class-string $managerClass
      */
-    public function __construct(
-        ReflectionProvider $reflectionProvider,
-        ?string $repositoryClass,
-        ?string $ormRepositoryClass,
-        ?string $odmRepositoryClass,
-        string $managerClass,
-        ObjectMetadataResolver $metadataResolver
-    ) {
-        $this->reflectionProvider = $reflectionProvider;
-        $this->repositoryClass = $repositoryClass;
-        $this->ormRepositoryClass = $ormRepositoryClass;
-        $this->odmRepositoryClass = $odmRepositoryClass;
-        $this->managerClass = $managerClass;
-        $this->metadataResolver = $metadataResolver;
-    }
-
-    public function getClass(): string
+    public function __construct(Reflection_Provider $reflection_provider, ?string $repository_class, ?string $orm_repository_class, ?string $odm_repository_class, string $manager_class, Object_Metadata_Resolver $metadata_resolver)
     {
-        return $this->managerClass;
+        $this->reflection_provider = $reflection_provider;
+        $this->repository_class = $repository_class;
+        $this->orm_repository_class = $orm_repository_class;
+        $this->odm_repository_class = $odm_repository_class;
+        $this->manager_class = $manager_class;
+        $this->metadata_resolver = $metadata_resolver;
     }
-
-    public function isMethodSupported(MethodReflection $methodReflection): bool
+    public function get_class(): string
     {
-        return $methodReflection->getName() === 'getRepository';
+        return $this->manager_class;
     }
-
-    public function getTypeFromMethodCall(
-        MethodReflection $methodReflection,
-        MethodCall $methodCall,
-        Scope $scope
-    ): Type {
-        $calledOnType = $scope->getType($methodCall->var);
-        if ((new ObjectType(DocumentManager::class))->isSuperTypeOf($calledOnType)->yes()) {
-            $defaultRepositoryClass = $this->odmRepositoryClass ?? $this->repositoryClass ?? DocumentRepository::class;
+    public function is_method_supported(Method_Reflection $method_reflection): bool
+    {
+        return $method_reflection->get_name() === 'getRepository';
+    }
+    public function get_type_from_method_call(Method_Reflection $method_reflection, Method_Call $method_call, Scope $scope): Type
+    {
+        $called_on_type = $scope->get_type($method_call->var);
+        if ((new Object_Type(Document_Manager::class))->is_super_type_of($called_on_type)->yes()) {
+            $default_repository_class = $this->odm_repository_class ?? $this->repository_class ?? Document_Repository::class;
         } else {
-            $defaultRepositoryClass = $this->ormRepositoryClass ?? $this->repositoryClass ?? EntityRepository::class;
+            $default_repository_class = $this->orm_repository_class ?? $this->repository_class ?? Entity_Repository::class;
         }
-        if (count($methodCall->getArgs()) === 0) {
-            return new GenericObjectType(
-                $defaultRepositoryClass,
-                [new ObjectWithoutClassType()],
-            );
+        if (count($method_call->get_args()) === 0) {
+            return new Generic_Object_Type($default_repository_class, [new Object_Without_Class_Type()]);
         }
-        $argType = $scope->getType($methodCall->getArgs()[0]->value);
-        if (!$argType->isClassString()->yes()) {
-            return $this->getDefaultReturnType($scope, $methodCall->getArgs(), $methodReflection, $defaultRepositoryClass);
+        $arg_type = $scope->get_type($method_call->get_args()[0]->value);
+        if (!$arg_type->is_class_string()->yes()) {
+            return $this->get_default_return_type($scope, $method_call->get_args(), $method_reflection, $default_repository_class);
         }
-
-        $classType = $argType->getClassStringObjectType();
-        $objectNames = $classType->getObjectClassNames();
-
-        if (count($objectNames) === 0) {
-            return new GenericObjectType(
-                $defaultRepositoryClass,
-                [$classType],
-            );
+        $class_type = $arg_type->get_class_string_object_type();
+        $object_names = $class_type->get_object_class_names();
+        if (count($object_names) === 0) {
+            return new Generic_Object_Type($default_repository_class, [$class_type]);
         }
-
-        $repositoryTypes = [];
-        foreach ($objectNames as $objectName) {
+        $repository_types = [];
+        foreach ($object_names as $object_name) {
             try {
-                $repositoryClass = $this->getRepositoryClass($objectName, $defaultRepositoryClass);
-            } catch (\Doctrine\Persistence\Mapping\MappingException | MappingException | AnnotationException $e) {
-                return $this->getDefaultReturnType($scope, $methodCall->getArgs(), $methodReflection, $defaultRepositoryClass);
+                $repository_class = $this->get_repository_class($object_name, $default_repository_class);
+            } catch (\Doctrine\Persistence\Mapping\Mapping_Exception|Mapping_Exception|Annotation_Exception $e) {
+                return $this->get_default_return_type($scope, $method_call->get_args(), $method_reflection, $default_repository_class);
             }
-
-            $repositoryTypes[] = new GenericObjectType($repositoryClass, [$classType]);
+            $repository_types[] = new Generic_Object_Type($repository_class, [$class_type]);
         }
-
-        return TypeCombinator::union(...$repositoryTypes);
+        return Type_Combinator::union(...$repository_types);
     }
-
     /**
      * @param Arg[] $args
      */
-    private function getDefaultReturnType(Scope $scope, array $args, MethodReflection $methodReflection, string $defaultRepositoryClass): Type
+    private function get_default_return_type(Scope $scope, array $args, Method_Reflection $method_reflection, string $default_repository_class): Type
     {
-        $defaultType = ParametersAcceptorSelector::selectFromArgs(
-            $scope,
-            $args,
-            $methodReflection->getVariants(),
-        )->getReturnType();
-        $entity = $defaultType->getTemplateType(ObjectRepository::class, 'TEntityClass');
-        if (!$entity instanceof ErrorType) {
-            return new GenericObjectType(
-                $defaultRepositoryClass,
-                [$entity],
-            );
+        $default_type = Parameters_Acceptor_Selector::select_from_args($scope, $args, $method_reflection->get_variants())->get_return_type();
+        $entity = $default_type->get_template_type(Object_Repository::class, 'TEntityClass');
+        if (!$entity instanceof Error_Type) {
+            return new Generic_Object_Type($default_repository_class, [$entity]);
         }
-
-        return $defaultType;
+        return $default_type;
     }
-
-    private function getRepositoryClass(string $className, string $defaultRepositoryClass): string
+    private function get_repository_class(string $class_name, string $default_repository_class): string
     {
-        if (!$this->reflectionProvider->hasClass($className)) {
-            return $defaultRepositoryClass;
+        if (!$this->reflection_provider->has_class($class_name)) {
+            return $default_repository_class;
         }
-
-        $classReflection = $this->reflectionProvider->getClass($className);
-        if ($classReflection->isInterface() || $classReflection->isTrait()) {
-            return $defaultRepositoryClass;
+        $class_reflection = $this->reflection_provider->get_class($class_name);
+        if ($class_reflection->is_interface() || $class_reflection->is_trait()) {
+            return $default_repository_class;
         }
-
-        $metadata = $this->metadataResolver->getClassMetadata($classReflection->getName());
+        $metadata = $this->metadata_resolver->get_class_metadata($class_reflection->get_name());
         if ($metadata !== null) {
-            return $metadata->customRepositoryClassName ?? $defaultRepositoryClass;
+            return $metadata->custom_repository_class_name ?? $default_repository_class;
         }
-
-        $objectManager = $this->metadataResolver->getObjectManager();
-        if ($objectManager === null) {
-            return $defaultRepositoryClass;
+        $object_manager = $this->metadata_resolver->get_object_manager();
+        if ($object_manager === null) {
+            return $default_repository_class;
         }
-
-        $metadata = $objectManager->getClassMetadata($classReflection->getName());
-        $odmMetadataClass = 'Doctrine\ODM\MongoDB\Mapping\ClassMetadata';
-        if ($metadata instanceof $odmMetadataClass) {
+        $metadata = $object_manager->get_class_metadata($class_reflection->get_name());
+        $odm_metadata_class = 'Doctrine\ODM\MongoDB\Mapping\ClassMetadata';
+        if ($metadata instanceof $odm_metadata_class) {
             /** @var ClassMetadata<object> $odmMetadata */
-            $odmMetadata = $metadata;
-            return $odmMetadata->customRepositoryClassName ?? $defaultRepositoryClass;
+            $odm_metadata = $metadata;
+            return $odm_metadata->custom_repository_class_name ?? $default_repository_class;
         }
-
-        return $defaultRepositoryClass;
+        return $default_repository_class;
     }
-
 }

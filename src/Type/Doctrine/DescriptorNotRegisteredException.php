@@ -1,11 +1,9 @@
 <?php
 
-declare(strict_types=1);
-
-namespace PHPStan\Type\Doctrine;
+declare (strict_types=1);
+namespace Php_Stan\Type\Doctrine;
 
 use RuntimeException;
-
-class DescriptorNotRegisteredException extends RuntimeException
+class Descriptor_Not_Registered_Exception extends RuntimeException
 {
 }

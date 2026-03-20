@@ -1,28 +1,23 @@
 <?php
 
-declare(strict_types=1);
+declare (strict_types=1);
+namespace Php_Stan\Type\Doctrine\Query_Builder\Expr;
 
-namespace PHPStan\Type\Doctrine\QueryBuilder\Expr;
-
-use PHPStan\Type\ObjectType;
-
+use Php_Stan\Type\Object_Type;
 /** @api */
-class ExprType extends ObjectType
+class Expr_Type extends Object_Type
 {
-    private object $exprObject;
-
+    private object $expr_object;
     /**
      * @param object $exprObject
      */
-    public function __construct(string $className, $exprObject)
+    public function __construct(string $class_name, $expr_object)
     {
-        parent::__construct($className);
-        $this->exprObject = $exprObject;
+        parent::__construct($class_name);
+        $this->expr_object = $expr_object;
     }
-
-    public function getExprObject(): object
+    public function get_expr_object(): object
     {
-        return $this->exprObject;
+        return $this->expr_object;
     }
-
 }

@@ -1,33 +1,27 @@
 <?php
 
-declare(strict_types=1);
+declare (strict_types=1);
+namespace Php_Stan\Type\Doctrine\Descriptors;
 
-namespace PHPStan\Type\Doctrine\Descriptors;
-
-use PHPStan\Type\MixedType;
-use PHPStan\Type\ResourceType;
-use PHPStan\Type\Type;
-
-class BlobType implements DoctrineTypeDescriptor
+use Php_Stan\Type\Mixed_Type;
+use Php_Stan\Type\Resource_Type;
+use Php_Stan\Type\Type;
+class Blob_Type implements Doctrine_Type_Descriptor
 {
-    public function getType(): string
+    public function get_type(): string
     {
-        return \Doctrine\DBAL\Types\BlobType::class;
+        return \Doctrine\DBAL\Types\Blob_Type::class;
     }
-
-    public function getWritableToPropertyType(): Type
+    public function get_writable_to_property_type(): Type
     {
-        return new ResourceType();
+        return new Resource_Type();
     }
-
-    public function getWritableToDatabaseType(): Type
+    public function get_writable_to_database_type(): Type
     {
-        return new MixedType();
+        return new Mixed_Type();
     }
-
-    public function getDatabaseInternalType(): Type
+    public function get_database_internal_type(): Type
     {
-        return new MixedType();
+        return new Mixed_Type();
     }
-
 }

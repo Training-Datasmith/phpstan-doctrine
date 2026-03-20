@@ -1,95 +1,74 @@
 <?php
 
-declare(strict_types=1);
-
-namespace PHPStan\Stubs\Doctrine;
+declare (strict_types=1);
+namespace Php_Stan\Stubs\Doctrine;
 
 use function class_exists;
-
-use Composer\InstalledVersions;
-
+use Composer\Installed_Versions;
 use function dirname;
-
 use OutOfBoundsException;
-use PHPStan\BetterReflection\Reflector\Exception\IdentifierNotFound;
-use PHPStan\BetterReflection\Reflector\Reflector;
-use PHPStan\PhpDoc\StubFilesExtension;
-
+use Php_Stan\Better_Reflection\Reflector\Exception\Identifier_Not_Found;
+use Php_Stan\Better_Reflection\Reflector\Reflector;
+use Php_Stan\Php_Doc\Stub_Files_Extension;
 use function strpos;
-
-class StubFilesExtensionLoader implements StubFilesExtension
+class Stub_Files_Extension_Loader implements Stub_Files_Extension
 {
     private Reflector $reflector;
-
-    public function __construct(
-        Reflector $reflector
-    ) {
+    public function __construct(Reflector $reflector)
+    {
         $this->reflector = $reflector;
     }
-
-    public function getFiles(): array
+    public function get_files(): array
     {
-        $stubsDir = dirname(__DIR__, 3) . '/stubs';
+        $stubs_dir = dirname(__DIR__, 3) . '/stubs';
         $files = [];
-
-        if ($this->isInstalledVersion('doctrine/dbal', 4)) {
-            $files[] = $stubsDir . '/DBAL/Connection4.stub';
-            $files[] = $stubsDir . '/DBAL/ArrayParameterType.stub';
-            $files[] = $stubsDir . '/DBAL/ParameterType.stub';
+        if ($this->is_installed_version('doctrine/dbal', 4)) {
+            $files[] = $stubs_dir . '/DBAL/Connection4.stub';
+            $files[] = $stubs_dir . '/DBAL/ArrayParameterType.stub';
+            $files[] = $stubs_dir . '/DBAL/ParameterType.stub';
         } else {
-            $files[] = $stubsDir . '/DBAL/Connection.stub';
+            $files[] = $stubs_dir . '/DBAL/Connection.stub';
         }
-
-        $hasLazyServiceEntityRepositoryAsParent = false;
-
+        $has_lazy_service_entity_repository_as_parent = false;
         try {
-            $serviceEntityRepository = $this->reflector->reflectClass('Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository');
-            if ($serviceEntityRepository->getParentClass() !== null) {
+            $service_entity_repository = $this->reflector->reflect_class('Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository');
+            if ($service_entity_repository->get_parent_class() !== null) {
                 /** @var class-string $lazyServiceEntityRepositoryName */
-                $lazyServiceEntityRepositoryName = 'Doctrine\Bundle\DoctrineBundle\Repository\LazyServiceEntityRepository';
-                $hasLazyServiceEntityRepositoryAsParent = $serviceEntityRepository->getParentClass()->getName() === $lazyServiceEntityRepositoryName;
+                $lazy_service_entity_repository_name = 'Doctrine\Bundle\DoctrineBundle\Repository\LazyServiceEntityRepository';
+                $has_lazy_service_entity_repository_as_parent = $service_entity_repository->get_parent_class()->get_name() === $lazy_service_entity_repository_name;
             }
-        } catch (IdentifierNotFound $e) {
+        } catch (Identifier_Not_Found $e) {
             // pass
         }
-
-        if ($hasLazyServiceEntityRepositoryAsParent) {
-            $files[] = $stubsDir . '/LazyServiceEntityRepository.stub';
+        if ($has_lazy_service_entity_repository_as_parent) {
+            $files[] = $stubs_dir . '/LazyServiceEntityRepository.stub';
         } else {
-            $files[] = $stubsDir . '/ServiceEntityRepository.stub';
+            $files[] = $stubs_dir . '/ServiceEntityRepository.stub';
         }
-
         try {
-            $collectionVersion = class_exists(InstalledVersions::class)
-                ? InstalledVersions::getVersion('doctrine/collections')
-                : null;
+            $collection_version = class_exists(Installed_Versions::class) ? Installed_Versions::get_version('doctrine/collections') : null;
         } catch (OutOfBoundsException $e) {
-            $collectionVersion = null;
+            $collection_version = null;
         }
-        if ($collectionVersion !== null && strpos($collectionVersion, '1.') === 0) {
-            $files[] = $stubsDir . '/Collections/ReadableCollection1.stub';
-            $files[] = $stubsDir . '/Collections/Collection1.stub';
+        if ($collection_version !== null && strpos($collection_version, '1.') === 0) {
+            $files[] = $stubs_dir . '/Collections/ReadableCollection1.stub';
+            $files[] = $stubs_dir . '/Collections/Collection1.stub';
         } else {
-            $files[] = $stubsDir . '/Collections/ReadableCollection.stub';
-            $files[] = $stubsDir . '/Collections/Collection.stub';
+            $files[] = $stubs_dir . '/Collections/ReadableCollection.stub';
+            $files[] = $stubs_dir . '/Collections/Collection.stub';
         }
-
         return $files;
     }
-
-    private function isInstalledVersion(string $package, int $majorVersion): bool
+    private function is_installed_version(string $package, int $major_version): bool
     {
-        if (!class_exists(InstalledVersions::class)) {
+        if (!class_exists(Installed_Versions::class)) {
             return false;
         }
-
         try {
-            $installedVersion = InstalledVersions::getVersion($package);
+            $installed_version = Installed_Versions::get_version($package);
         } catch (OutOfBoundsException $e) {
             return false;
         }
-
-        return $installedVersion !== null && strpos($installedVersion, $majorVersion . '.') === 0;
+        return $installed_version !== null && strpos($installed_version, $major_version . '.') === 0;
     }
-
 }

@@ -1,58 +1,44 @@
 <?php
 
-declare(strict_types=1);
-
-namespace PHPStan\Type\Doctrine\QueryBuilder;
+declare (strict_types=1);
+namespace Php_Stan\Type\Doctrine\Query_Builder;
 
 use function array_unshift;
 use function count;
-
-use PhpParser\Node\Arg;
-use PhpParser\Node\Expr\MethodCall;
-use PhpParser\Node\Identifier;
-use PhpParser\Node\Scalar\String_;
-use PHPStan\Analyser\Scope;
-use PHPStan\Reflection\MethodReflection;
-use PHPStan\Type\DynamicMethodReturnTypeExtension;
-use PHPStan\Type\Type;
-
-class EntityRepositoryCreateQueryBuilderDynamicReturnTypeExtension implements DynamicMethodReturnTypeExtension
+use Php_Parser\Node\Arg;
+use Php_Parser\Node\Expr\Method_Call;
+use Php_Parser\Node\Identifier;
+use Php_Parser\Node\Scalar\String_;
+use Php_Stan\Analyser\Scope;
+use Php_Stan\Reflection\Method_Reflection;
+use Php_Stan\Type\Dynamic_Method_Return_Type_Extension;
+use Php_Stan\Type\Type;
+class Entity_Repository_Create_Query_Builder_Dynamic_Return_Type_Extension implements Dynamic_Method_Return_Type_Extension
 {
-    public function getClass(): string
+    public function get_class(): string
     {
         return 'Doctrine\ORM\EntityRepository';
     }
-
-    public function isMethodSupported(MethodReflection $methodReflection): bool
+    public function is_method_supported(Method_Reflection $method_reflection): bool
     {
-        return $methodReflection->getName() === 'createQueryBuilder';
+        return $method_reflection->get_name() === 'createQueryBuilder';
     }
-
-    public function getTypeFromMethodCall(
-        MethodReflection $methodReflection,
-        MethodCall $methodCall,
-        Scope $scope
-    ): ?Type {
-        $entityNameExpr = new MethodCall($methodCall->var, new Identifier('getEntityName'));
-
-        $entityNameExprType = $scope->getType($entityNameExpr);
-        if ($entityNameExprType->isClassString()->yes() && count($entityNameExprType->getClassStringObjectType()->getObjectClassNames()) === 1) {
-            $entityNameExpr = new String_($entityNameExprType->getClassStringObjectType()->getObjectClassNames()[0]);
+    public function get_type_from_method_call(Method_Reflection $method_reflection, Method_Call $method_call, Scope $scope): ?Type
+    {
+        $entity_name_expr = new Method_Call($method_call->var, new Identifier('getEntityName'));
+        $entity_name_expr_type = $scope->get_type($entity_name_expr);
+        if ($entity_name_expr_type->is_class_string()->yes() && count($entity_name_expr_type->get_class_string_object_type()->get_object_class_names()) === 1) {
+            $entity_name_expr = new String_($entity_name_expr_type->get_class_string_object_type()->get_object_class_names()[0]);
         }
-
-        if (!isset($methodCall->getArgs()[0])) {
+        if (!isset($method_call->get_args()[0])) {
             return null;
         }
-
-        $fromArgs = $methodCall->getArgs();
-        array_unshift($fromArgs, new Arg($entityNameExpr));
-
-        $callStack = new MethodCall($methodCall->var, new Identifier('getEntityManager'));
-        $callStack = new MethodCall($callStack, new Identifier('createQueryBuilder'));
-        $callStack = new MethodCall($callStack, new Identifier('select'), [$methodCall->getArgs()[0]]);
-        $callStack = new MethodCall($callStack, new Identifier('from'), $fromArgs);
-
-        return $scope->getType($callStack);
+        $from_args = $method_call->get_args();
+        array_unshift($from_args, new Arg($entity_name_expr));
+        $call_stack = new Method_Call($method_call->var, new Identifier('getEntityManager'));
+        $call_stack = new Method_Call($call_stack, new Identifier('createQueryBuilder'));
+        $call_stack = new Method_Call($call_stack, new Identifier('select'), [$method_call->get_args()[0]]);
+        $call_stack = new Method_Call($call_stack, new Identifier('from'), $from_args);
+        return $scope->get_type($call_stack);
     }
-
 }

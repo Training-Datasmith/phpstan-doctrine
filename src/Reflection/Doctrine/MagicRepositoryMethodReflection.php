@@ -1,140 +1,97 @@
 <?php
 
-declare(strict_types=1);
+declare (strict_types=1);
+namespace Php_Stan\Reflection\Doctrine;
 
-namespace PHPStan\Reflection\Doctrine;
-
-use PHPStan\Reflection\ClassMemberReflection;
-use PHPStan\Reflection\ClassReflection;
-use PHPStan\Reflection\FunctionVariant;
-use PHPStan\Reflection\MethodReflection;
-use PHPStan\ShouldNotHappenException;
-use PHPStan\TrinaryLogic;
-use PHPStan\Type\ArrayType;
-use PHPStan\Type\Generic\TemplateTypeMap;
-use PHPStan\Type\IntegerType;
-use PHPStan\Type\MixedType;
-use PHPStan\Type\NullType;
-use PHPStan\Type\StringType;
-use PHPStan\Type\Type;
-use PHPStan\Type\UnionType;
-
+use Php_Stan\Reflection\Class_Member_Reflection;
+use Php_Stan\Reflection\Class_Reflection;
+use Php_Stan\Reflection\Function_Variant;
+use Php_Stan\Reflection\Method_Reflection;
+use Php_Stan\Should_Not_Happen_Exception;
+use Php_Stan\Trinary_Logic;
+use Php_Stan\Type\Array_Type;
+use Php_Stan\Type\Generic\Template_Type_Map;
+use Php_Stan\Type\Integer_Type;
+use Php_Stan\Type\Mixed_Type;
+use Php_Stan\Type\Null_Type;
+use Php_Stan\Type\String_Type;
+use Php_Stan\Type\Type;
+use Php_Stan\Type\Union_Type;
 use function strpos;
-
-class MagicRepositoryMethodReflection implements MethodReflection
+class Magic_Repository_Method_Reflection implements Method_Reflection
 {
-    private ClassReflection $declaringClass;
-
+    private Class_Reflection $declaring_class;
     private string $name;
-
     private Type $type;
-
-    public function __construct(
-        ClassReflection $declaringClass,
-        string $name,
-        Type $type
-    ) {
-        $this->declaringClass = $declaringClass;
+    public function __construct(Class_Reflection $declaring_class, string $name, Type $type)
+    {
+        $this->declaring_class = $declaring_class;
         $this->name = $name;
         $this->type = $type;
     }
-
-    public function getDeclaringClass(): ClassReflection
+    public function get_declaring_class(): Class_Reflection
     {
-        return $this->declaringClass;
+        return $this->declaring_class;
     }
-
-    public function isStatic(): bool
+    public function is_static(): bool
     {
         return false;
     }
-
-    public function isPrivate(): bool
+    public function is_private(): bool
     {
         return false;
     }
-
-    public function isPublic(): bool
+    public function is_public(): bool
     {
         return true;
     }
-
-    public function getDocComment(): ?string
+    public function get_doc_comment(): ?string
     {
         return null;
     }
-
-    public function getName(): string
+    public function get_name(): string
     {
         return $this->name;
     }
-
-    public function getPrototype(): ClassMemberReflection
+    public function get_prototype(): Class_Member_Reflection
     {
         return $this;
     }
-
-    public function getVariants(): array
+    public function get_variants(): array
     {
         if (strpos($this->name, 'findBy') === 0) {
-            $arguments = [
-                new DummyParameter('argument', new MixedType(), false, null, false, null),
-                new DummyParameter('orderBy', new UnionType([new ArrayType(new StringType(), new StringType()), new NullType()]), true, null, false, null),
-                new DummyParameter('limit', new UnionType([new IntegerType(), new NullType()]), true, null, false, null),
-                new DummyParameter('offset', new UnionType([new IntegerType(), new NullType()]), true, null, false, null),
-            ];
+            $arguments = [new Dummy_Parameter('argument', new Mixed_Type(), false, null, false, null), new Dummy_Parameter('orderBy', new Union_Type([new Array_Type(new String_Type(), new String_Type()), new Null_Type()]), true, null, false, null), new Dummy_Parameter('limit', new Union_Type([new Integer_Type(), new Null_Type()]), true, null, false, null), new Dummy_Parameter('offset', new Union_Type([new Integer_Type(), new Null_Type()]), true, null, false, null)];
         } elseif (strpos($this->name, 'findOneBy') === 0) {
-            $arguments = [
-                new DummyParameter('argument', new MixedType(), false, null, false, null),
-                new DummyParameter('orderBy', new UnionType([new ArrayType(new StringType(), new StringType()), new NullType()]), true, null, false, null),
-            ];
+            $arguments = [new Dummy_Parameter('argument', new Mixed_Type(), false, null, false, null), new Dummy_Parameter('orderBy', new Union_Type([new Array_Type(new String_Type(), new String_Type()), new Null_Type()]), true, null, false, null)];
         } elseif (strpos($this->name, 'countBy') === 0) {
-            $arguments = [
-                new DummyParameter('argument', new MixedType(), false, null, false, null),
-            ];
+            $arguments = [new Dummy_Parameter('argument', new Mixed_Type(), false, null, false, null)];
         } else {
-            throw new ShouldNotHappenException();
+            throw new Should_Not_Happen_Exception();
         }
-
-        return [
-            new FunctionVariant(
-                TemplateTypeMap::createEmpty(),
-                null,
-                $arguments,
-                false,
-                $this->type,
-            ),
-        ];
+        return [new Function_Variant(Template_Type_Map::create_empty(), null, $arguments, false, $this->type)];
     }
-
-    public function isDeprecated(): TrinaryLogic
+    public function is_deprecated(): Trinary_Logic
     {
-        return TrinaryLogic::createNo();
+        return Trinary_Logic::create_no();
     }
-
-    public function getDeprecatedDescription(): ?string
+    public function get_deprecated_description(): ?string
     {
         return null;
     }
-
-    public function isFinal(): TrinaryLogic
+    public function is_final(): Trinary_Logic
     {
-        return TrinaryLogic::createNo();
+        return Trinary_Logic::create_no();
     }
-
-    public function isInternal(): TrinaryLogic
+    public function is_internal(): Trinary_Logic
     {
-        return TrinaryLogic::createNo();
+        return Trinary_Logic::create_no();
     }
-
-    public function getThrowType(): ?Type
+    public function get_throw_type(): ?Type
     {
         return null;
     }
-
-    public function hasSideEffects(): TrinaryLogic
+    public function has_side_effects(): Trinary_Logic
     {
-        return TrinaryLogic::createNo();
+        return Trinary_Logic::create_no();
     }
-
 }

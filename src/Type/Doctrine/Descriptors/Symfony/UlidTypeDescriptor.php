@@ -1,50 +1,39 @@
 <?php
 
-declare(strict_types=1);
+declare (strict_types=1);
+namespace Php_Stan\Type\Doctrine\Descriptors\Symfony;
 
-namespace PHPStan\Type\Doctrine\Descriptors\Symfony;
-
-use PHPStan\Type\Doctrine\Descriptors\DoctrineTypeDescriptor;
-use PHPStan\Type\ObjectType;
-use PHPStan\Type\StringType;
-use PHPStan\Type\Type;
-use PHPStan\Type\TypeCombinator;
+use Php_Stan\Type\Doctrine\Descriptors\Doctrine_Type_Descriptor;
+use Php_Stan\Type\Object_Type;
+use Php_Stan\Type\String_Type;
+use Php_Stan\Type\Type;
+use Php_Stan\Type\Type_Combinator;
 use Symfony\Component\Uid\Ulid;
-
-class UlidTypeDescriptor implements DoctrineTypeDescriptor
+class Ulid_Type_Descriptor implements Doctrine_Type_Descriptor
 {
     /** @var class-string<\Doctrine\DBAL\Types\Type> */
-    private string $uuidTypeName;
-
+    private string $uuid_type_name;
     /**
      * @param class-string<\Doctrine\DBAL\Types\Type> $uuidTypeName
      */
-    public function __construct(string $uuidTypeName)
+    public function __construct(string $uuid_type_name)
     {
-        $this->uuidTypeName = $uuidTypeName;
+        $this->uuid_type_name = $uuid_type_name;
     }
-
-    public function getType(): string
+    public function get_type(): string
     {
-        return $this->uuidTypeName;
+        return $this->uuid_type_name;
     }
-
-    public function getWritableToPropertyType(): Type
+    public function get_writable_to_property_type(): Type
     {
-        return new ObjectType(Ulid::class);
+        return new Object_Type(Ulid::class);
     }
-
-    public function getWritableToDatabaseType(): Type
+    public function get_writable_to_database_type(): Type
     {
-        return TypeCombinator::union(
-            new StringType(),
-            new ObjectType(Ulid::class),
-        );
+        return Type_Combinator::union(new String_Type(), new Object_Type(Ulid::class));
     }
-
-    public function getDatabaseInternalType(): Type
+    public function get_database_internal_type(): Type
     {
-        return new StringType();
+        return new String_Type();
     }
-
 }

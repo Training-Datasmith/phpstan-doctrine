@@ -1,76 +1,59 @@
 <?php
 
-declare(strict_types=1);
-
-namespace PHPStan\Type\Doctrine\DBAL\QueryBuilder;
+declare (strict_types=1);
+namespace Php_Stan\Type\Doctrine\DBAL\Query_Builder;
 
 use Doctrine\DBAL\Driver\Result;
-use Doctrine\DBAL\Driver\ResultStatement;
-use Doctrine\DBAL\Query\QueryBuilder;
-use PhpParser\Node\Expr\MethodCall;
-use PhpParser\Node\Identifier;
-use PHPStan\Analyser\Scope;
-use PHPStan\Reflection\MethodReflection;
-use PHPStan\Reflection\ParametersAcceptorSelector;
-use PHPStan\Reflection\ReflectionProvider;
-use PHPStan\Type\DynamicMethodReturnTypeExtension;
-use PHPStan\Type\ObjectType;
-use PHPStan\Type\Type;
-use PHPStan\Type\TypeCombinator;
-
-class QueryBuilderExecuteMethodExtension implements DynamicMethodReturnTypeExtension
+use Doctrine\DBAL\Driver\Result_Statement;
+use Doctrine\DBAL\Query\Query_Builder;
+use Php_Parser\Node\Expr\Method_Call;
+use Php_Parser\Node\Identifier;
+use Php_Stan\Analyser\Scope;
+use Php_Stan\Reflection\Method_Reflection;
+use Php_Stan\Reflection\Parameters_Acceptor_Selector;
+use Php_Stan\Reflection\Reflection_Provider;
+use Php_Stan\Type\Dynamic_Method_Return_Type_Extension;
+use Php_Stan\Type\Object_Type;
+use Php_Stan\Type\Type;
+use Php_Stan\Type\Type_Combinator;
+class Query_Builder_Execute_Method_Extension implements Dynamic_Method_Return_Type_Extension
 {
-    private ReflectionProvider $reflectionProvider;
-
-    public function __construct(ReflectionProvider $reflectionProvider)
+    private Reflection_Provider $reflection_provider;
+    public function __construct(Reflection_Provider $reflection_provider)
     {
-        $this->reflectionProvider = $reflectionProvider;
+        $this->reflection_provider = $reflection_provider;
     }
-
-    public function getClass(): string
+    public function get_class(): string
     {
-        return QueryBuilder::class;
+        return Query_Builder::class;
     }
-
-    public function isMethodSupported(MethodReflection $methodReflection): bool
+    public function is_method_supported(Method_Reflection $method_reflection): bool
     {
-        return $methodReflection->getName() === 'execute';
+        return $method_reflection->get_name() === 'execute';
     }
-
-    public function getTypeFromMethodCall(MethodReflection $methodReflection, MethodCall $methodCall, Scope $scope): Type
+    public function get_type_from_method_call(Method_Reflection $method_reflection, Method_Call $method_call, Scope $scope): Type
     {
-        $defaultReturnType = ParametersAcceptorSelector::selectFromArgs(
-            $scope,
-            $methodCall->getArgs(),
-            $methodReflection->getVariants(),
-        )->getReturnType();
-
-        $queryBuilderType = new ObjectType(QueryBuilder::class);
-        $var = $methodCall->var;
-        while ($var instanceof MethodCall) {
-            $varType = $scope->getType($var->var);
-            if (!$queryBuilderType->isSuperTypeOf($varType)->yes()) {
-                return $defaultReturnType;
+        $default_return_type = Parameters_Acceptor_Selector::select_from_args($scope, $method_call->get_args(), $method_reflection->get_variants())->get_return_type();
+        $query_builder_type = new Object_Type(Query_Builder::class);
+        $var = $method_call->var;
+        while ($var instanceof Method_Call) {
+            $var_type = $scope->get_type($var->var);
+            if (!$query_builder_type->is_super_type_of($var_type)->yes()) {
+                return $default_return_type;
             }
-
-            $nameObject = $var->name;
-            if (!($nameObject instanceof Identifier)) {
-                return $defaultReturnType;
+            $name_object = $var->name;
+            if (!$name_object instanceof Identifier) {
+                return $default_return_type;
             }
-
-            $name = $nameObject->toString();
+            $name = $name_object->to_string();
             if ($name === 'select' || $name === 'addSelect') {
-                if ($this->reflectionProvider->hasClass(ResultStatement::class)) {
-                    return TypeCombinator::intersect($defaultReturnType, new ObjectType(ResultStatement::class));
+                if ($this->reflection_provider->has_class(Result_Statement::class)) {
+                    return Type_Combinator::intersect($default_return_type, new Object_Type(Result_Statement::class));
                 }
-
-                return TypeCombinator::intersect($defaultReturnType, new ObjectType(Result::class));
+                return Type_Combinator::intersect($default_return_type, new Object_Type(Result::class));
             }
-
             $var = $var->var;
         }
-
-        return $defaultReturnType;
+        return $default_return_type;
     }
-
 }

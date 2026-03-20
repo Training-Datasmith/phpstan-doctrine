@@ -1,97 +1,71 @@
 <?php
 
-declare(strict_types=1);
-
-namespace PHPStan\Rules\Doctrine\ORM;
+declare (strict_types=1);
+namespace Php_Stan\Rules\Doctrine\ORM;
 
 use function count;
-
-use Doctrine\Persistence\ObjectRepository;
-
+use Doctrine\Persistence\Object_Repository;
 use function in_array;
-
-use PhpParser\Node;
-use PHPStan\Analyser\Scope;
-use PHPStan\Rules\Rule;
-use PHPStan\Rules\RuleErrorBuilder;
-use PHPStan\Type\Doctrine\ObjectMetadataResolver;
-use PHPStan\Type\VerbosityLevel;
-
+use Php_Parser\Node;
+use Php_Stan\Analyser\Scope;
+use Php_Stan\Rules\Rule;
+use Php_Stan\Rules\Rule_Error_Builder;
+use Php_Stan\Type\Doctrine\Object_Metadata_Resolver;
+use Php_Stan\Type\Verbosity_Level;
 use function sprintf;
-
 /**
  * @implements Rule<Node\Expr\MethodCall>
  */
-class RepositoryMethodCallRule implements Rule
+class Repository_Method_Call_Rule implements Rule
 {
-    private ObjectMetadataResolver $objectMetadataResolver;
-
-    public function __construct(ObjectMetadataResolver $objectMetadataResolver)
+    private Object_Metadata_Resolver $object_metadata_resolver;
+    public function __construct(Object_Metadata_Resolver $object_metadata_resolver)
     {
-        $this->objectMetadataResolver = $objectMetadataResolver;
+        $this->object_metadata_resolver = $object_metadata_resolver;
     }
-
-    public function getNodeType(): string
+    public function get_node_type(): string
     {
-        return Node\Expr\MethodCall::class;
+        return Node\Expr\Method_Call::class;
     }
-
-    public function processNode(Node $node, Scope $scope): array
+    public function process_node(Node $node, Scope $scope): array
     {
-        if (!isset($node->getArgs()[0])) {
+        if (!isset($node->get_args()[0])) {
             return [];
         }
-        $argType = $scope->getType($node->getArgs()[0]->value);
-        $calledOnType = $scope->getType($node->var);
-        $entityClassType = $calledOnType->getTemplateType(ObjectRepository::class, 'TEntityClass');
-
+        $arg_type = $scope->get_type($node->get_args()[0]->value);
+        $called_on_type = $scope->get_type($node->var);
+        $entity_class_type = $called_on_type->get_template_type(Object_Repository::class, 'TEntityClass');
         /** @var list<class-string> $entityClassNames */
-        $entityClassNames = $entityClassType->getObjectClassNames();
-        if (count($entityClassNames) !== 1) {
+        $entity_class_names = $entity_class_type->get_object_class_names();
+        if (count($entity_class_names) !== 1) {
             return [];
         }
-
-        $methodNameIdentifier = $node->name;
-        if (!$methodNameIdentifier instanceof Node\Identifier) {
+        $method_name_identifier = $node->name;
+        if (!$method_name_identifier instanceof Node\Identifier) {
             return [];
         }
-
-        $methodName = $methodNameIdentifier->toString();
-        if (!in_array($methodName, [
-            'findBy',
-            'findOneBy',
-            'count',
-        ], true)) {
+        $method_name = $method_name_identifier->to_string();
+        if (!in_array($method_name, ['findBy', 'findOneBy', 'count'], true)) {
             return [];
         }
-
-        $classMetadata = $this->objectMetadataResolver->getClassMetadata($entityClassNames[0]);
-        if ($classMetadata === null) {
+        $class_metadata = $this->object_metadata_resolver->get_class_metadata($entity_class_names[0]);
+        if ($class_metadata === null) {
             return [];
         }
-
         $messages = [];
-        foreach ($argType->getConstantArrays() as $constantArray) {
-            foreach ($constantArray->getKeyTypes() as $keyType) {
-                foreach ($keyType->getConstantStrings() as $fieldName) {
-                    if ($classMetadata->hasField($fieldName->getValue())) {
+        foreach ($arg_type->get_constant_arrays() as $constant_array) {
+            foreach ($constant_array->get_key_types() as $key_type) {
+                foreach ($key_type->get_constant_strings() as $field_name) {
+                    if ($class_metadata->has_field($field_name->get_value())) {
                         continue;
                     }
-                    if ($classMetadata->hasAssociation($fieldName->getValue())) {
+                    if ($class_metadata->has_association($field_name->get_value())) {
                         continue;
                     }
-                    $messages[] = RuleErrorBuilder::message(sprintf(
-                        'Call to method %s::%s() - entity %s does not have a field named $%s.',
-                        $calledOnType->describe(VerbosityLevel::typeOnly()),
-                        $methodName,
-                        $entityClassNames[0],
-                        $fieldName->getValue(),
-                    ))->identifier(sprintf('doctrine.%sArgument', $methodName))->build();
+                    $messages[] = Rule_Error_Builder::message(sprintf('Call to method %s::%s() - entity %s does not have a field named $%s.', $called_on_type->describe(Verbosity_Level::type_only()), $method_name, $entity_class_names[0], $field_name->get_value()))->identifier(sprintf('doctrine.%sArgument', $method_name))->build();
                 }
             }
         }
-
         return $messages;
     }
-
 }
